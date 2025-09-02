@@ -1,0 +1,139 @@
+[28-Aug-2025 21:59:00 Asia/Taipei] === BEFORE UPDATE ===
+[28-Aug-2025 21:59:00 Asia/Taipei] Before - stats: 0, hmoney: 0, rmoney: 0
+[28-Aug-2025 21:59:00 Asia/Taipei] Variables - rstat: 3, PaymentTypeChargeFee: 0, TradeAmt: 1000
+[28-Aug-2025 21:59:00 Asia/Taipei] SQL to execute: UPDATE servers_log SET 
+            stats = 3,
+            hmoney = 0,
+            paytimes = '2025/08/28 21:58:59',
+            rmoney = 1000,
+            rCheckMacValue = 'system',
+            RtnCode = 1,
+            RtnMsg = '模擬付款成功'
+            WHERE orderid = '25082820102754901'
+[28-Aug-2025 21:59:00 Asia/Taipei] PDO->exec result: 1 (rows affected)
+[28-Aug-2025 21:59:00 Asia/Taipei] === AFTER UPDATE ===
+[28-Aug-2025 21:59:00 Asia/Taipei] After - stats: 3, hmoney: 0, rmoney: 1000
+[28-Aug-2025 21:59:00 Asia/Taipei] Final check - rr: 1, rstat: 1, condition check: TRUE
+[28-Aug-2025 22:02:17 Asia/Taipei] === BEFORE UPDATE ===
+[28-Aug-2025 22:02:17 Asia/Taipei] Before - stats: 0, hmoney: 0, rmoney: 0
+[28-Aug-2025 22:02:17 Asia/Taipei] Variables - rstat: 3, PaymentTypeChargeFee: 0, TradeAmt: 1000
+[28-Aug-2025 22:02:17 Asia/Taipei] SQL to execute: UPDATE servers_log SET 
+            stats = 3,
+            hmoney = 0,
+            paytimes = '2025/08/28 22:02:17',
+            rmoney = 1000,
+            rCheckMacValue = 'system',
+            RtnCode = 1,
+            RtnMsg = '模擬付款成功'
+            WHERE orderid = '25082820102754901'
+[28-Aug-2025 22:02:17 Asia/Taipei] PDO->exec result: 1 (rows affected)
+[28-Aug-2025 22:02:17 Asia/Taipei] === AFTER UPDATE ===
+[28-Aug-2025 22:02:17 Asia/Taipei] After - stats: 3, hmoney: 0, rmoney: 1000
+[28-Aug-2025 22:02:17 Asia/Taipei] Final check - rr: 1, rstat: 1, condition check: TRUE
+[28-Aug-2025 22:07:15 Asia/Taipei] ========== r.php START ==========
+[28-Aug-2025 22:07:15 Asia/Taipei] MerchantTradeNo: 25082820102754901, RtnCode: 1
+[28-Aug-2025 22:07:15 Asia/Taipei] Transaction started
+[28-Aug-2025 22:07:15 Asia/Taipei] BEFORE UPDATE - stats:0 | hmoney:0 | paytimes: | rmoney:0 | rCheckMacValue: | RtnCode: | RtnMsg:
+[28-Aug-2025 22:07:15 Asia/Taipei] rstat set to: 3
+[28-Aug-2025 22:07:15 Asia/Taipei] SQL: UPDATE servers_log SET 
+            stats = 3,
+            hmoney = 0,
+            paytimes = '2025/08/28 22:07:14',
+            rmoney = 1000,
+            rCheckMacValue = 'system',
+            RtnCode = 1,
+            RtnMsg = '模擬付款成功'
+            WHERE orderid = '25082820102754901'
+[28-Aug-2025 22:07:15 Asia/Taipei] UPDATE result: 1 rows affected
+[28-Aug-2025 22:07:15 Asia/Taipei] Transaction COMMITTED - update should be permanent now
+[28-Aug-2025 22:07:15 Asia/Taipei] AFTER UPDATE - stats:3 | hmoney:0 | paytimes:2025-08-28 22:07:14 | rmoney:1000 | rCheckMacValue:system | RtnCode:1 | RtnMsg:模擬付款成功
+[28-Aug-2025 22:09:54 Asia/Taipei] ========== r.php START ==========
+[28-Aug-2025 22:09:54 Asia/Taipei] MerchantTradeNo: 25082822092655301, RtnCode: 1
+[28-Aug-2025 22:09:54 Asia/Taipei] Transaction started
+[28-Aug-2025 22:09:54 Asia/Taipei] BEFORE UPDATE - stats:0 | hmoney:0 | paytimes: | rmoney:0 | rCheckMacValue: | RtnCode: | RtnMsg:
+[28-Aug-2025 22:09:54 Asia/Taipei] rstat set to: 3
+[28-Aug-2025 22:09:54 Asia/Taipei] SQL: UPDATE servers_log SET 
+            stats = 3,
+            hmoney = 0,
+            paytimes = '2025/08/28 22:09:54',
+            rmoney = 100,
+            rCheckMacValue = 'system',
+            RtnCode = 1,
+            RtnMsg = '模擬付款成功'
+            WHERE orderid = '25082822092655301'
+[28-Aug-2025 22:09:54 Asia/Taipei] UPDATE result: 1 rows affected
+[28-Aug-2025 22:09:54 Asia/Taipei] Transaction COMMITTED - update should be permanent now
+[28-Aug-2025 22:09:54 Asia/Taipei] AFTER UPDATE - stats:3 | hmoney:0 | paytimes:2025-08-28 22:09:54 | rmoney:100 | rCheckMacValue:system | RtnCode:1 | RtnMsg:模擬付款成功
+[28-Aug-2025 22:09:54 Asia/Taipei] Final rstat: 1, condition: TRUE
+[28-Aug-2025 22:12:07 Asia/Taipei] ========== r.php START ==========
+[28-Aug-2025 22:12:07 Asia/Taipei] MerchantTradeNo: 25082822115817601, RtnCode: 1
+[28-Aug-2025 22:12:07 Asia/Taipei] Transaction started
+[28-Aug-2025 22:12:07 Asia/Taipei] BEFORE UPDATE - stats:0 | hmoney:0 | paytimes: | rmoney:0 | rCheckMacValue: | RtnCode: | RtnMsg:
+[28-Aug-2025 22:12:07 Asia/Taipei] rstat set to: 3
+[28-Aug-2025 22:12:07 Asia/Taipei] SQL: UPDATE servers_log SET 
+            stats = 3,
+            hmoney = 0,
+            paytimes = '2025/08/28 22:12:07',
+            rmoney = 1000,
+            rCheckMacValue = 'system',
+            RtnCode = 1,
+            RtnMsg = '模擬付款成功'
+            WHERE orderid = '25082822115817601'
+[28-Aug-2025 22:12:07 Asia/Taipei] UPDATE result: 1 rows affected
+[28-Aug-2025 22:12:07 Asia/Taipei] Transaction COMMITTED - update should be permanent now
+[28-Aug-2025 22:12:07 Asia/Taipei] AFTER UPDATE - stats:3 | hmoney:0 | paytimes:2025-08-28 22:12:07 | rmoney:1000 | rCheckMacValue:system | RtnCode:1 | RtnMsg:模擬付款成功
+[28-Aug-2025 22:12:07 Asia/Taipei] Final rstat: 1, condition: TRUE
+[28-Aug-2025 22:13:07 Asia/Taipei] ========== r.php START ==========
+[28-Aug-2025 22:13:07 Asia/Taipei] MerchantTradeNo: 25082822125662501, RtnCode: 1
+[28-Aug-2025 22:13:07 Asia/Taipei] Transaction started
+[28-Aug-2025 22:13:07 Asia/Taipei] BEFORE UPDATE - stats:0 | hmoney:0 | paytimes: | rmoney:0 | rCheckMacValue: | RtnCode: | RtnMsg:
+[28-Aug-2025 22:13:07 Asia/Taipei] rstat set to: 3
+[28-Aug-2025 22:13:07 Asia/Taipei] SQL: UPDATE servers_log SET 
+            stats = 3,
+            hmoney = 0,
+            paytimes = '2025/08/28 22:13:07',
+            rmoney = 100,
+            rCheckMacValue = 'system',
+            RtnCode = 1,
+            RtnMsg = '模擬付款成功'
+            WHERE orderid = '25082822125662501'
+[28-Aug-2025 22:13:07 Asia/Taipei] UPDATE result: 1 rows affected
+[28-Aug-2025 22:13:07 Asia/Taipei] Transaction COMMITTED - update should be permanent now
+[28-Aug-2025 22:13:07 Asia/Taipei] AFTER UPDATE - stats:3 | hmoney:0 | paytimes:2025-08-28 22:13:07 | rmoney:100 | rCheckMacValue:system | RtnCode:1 | RtnMsg:模擬付款成功
+[28-Aug-2025 22:13:07 Asia/Taipei] Final rstat: 1, condition: TRUE
+[29-Aug-2025 01:05:06 Asia/Taipei] ========== r.php START ==========
+[29-Aug-2025 01:05:06 Asia/Taipei] MerchantTradeNo: 25082901043416904, RtnCode: 1
+[29-Aug-2025 01:05:06 Asia/Taipei] Transaction started
+[29-Aug-2025 01:05:06 Asia/Taipei] BEFORE UPDATE - stats:0 | hmoney:0 | paytimes: | rmoney:0 | rCheckMacValue: | RtnCode: | RtnMsg:
+[29-Aug-2025 01:05:06 Asia/Taipei] rstat set to: 3
+[29-Aug-2025 01:05:06 Asia/Taipei] SQL: UPDATE servers_log SET 
+            stats = 3,
+            hmoney = 0,
+            paytimes = '2025/08/29 01:05:06',
+            rmoney = 500,
+            rCheckMacValue = 'system',
+            RtnCode = 1,
+            RtnMsg = '模擬付款成功'
+            WHERE orderid = '25082901043416904'
+[29-Aug-2025 01:05:06 Asia/Taipei] UPDATE result: 1 rows affected
+[29-Aug-2025 01:05:06 Asia/Taipei] Transaction COMMITTED - update should be permanent now
+[29-Aug-2025 01:05:06 Asia/Taipei] AFTER UPDATE - stats:3 | hmoney:0 | paytimes:2025-08-29 01:05:06 | rmoney:500 | rCheckMacValue:system | RtnCode:1 | RtnMsg:模擬付款成功
+[29-Aug-2025 01:05:06 Asia/Taipei] Final rstat: 1, condition: TRUE
+[29-Aug-2025 01:24:27 Asia/Taipei] ========== r.php START ==========
+[29-Aug-2025 01:24:27 Asia/Taipei] MerchantTradeNo: 25082901081813504, RtnCode: 1
+[29-Aug-2025 01:24:27 Asia/Taipei] Transaction started
+[29-Aug-2025 01:24:27 Asia/Taipei] BEFORE UPDATE - stats:0 | hmoney:0 | paytimes: | rmoney:0 | rCheckMacValue: | RtnCode: | RtnMsg:
+[29-Aug-2025 01:24:27 Asia/Taipei] rstat set to: 3
+[29-Aug-2025 01:24:27 Asia/Taipei] SQL: UPDATE servers_log SET 
+            stats = 3,
+            hmoney = 0,
+            paytimes = '2025/08/29 01:24:26',
+            rmoney = 1000,
+            rCheckMacValue = 'system',
+            RtnCode = 1,
+            RtnMsg = '模擬付款成功'
+            WHERE orderid = '25082901081813504'
+[29-Aug-2025 01:24:27 Asia/Taipei] UPDATE result: 1 rows affected
+[29-Aug-2025 01:24:27 Asia/Taipei] Transaction COMMITTED - update should be permanent now
+[29-Aug-2025 01:24:27 Asia/Taipei] AFTER UPDATE - stats:3 | hmoney:0 | paytimes:2025-08-29 01:24:26 | rmoney:1000 | rCheckMacValue:system | RtnCode:1 | RtnMsg:模擬付款成功
+[29-Aug-2025 01:24:27 Asia/Taipei] Final rstat: 1, condition: TRUE
