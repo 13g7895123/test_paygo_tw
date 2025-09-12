@@ -146,6 +146,82 @@ if(_r("st") === "upload") {
 	exit;
 }
 
+function save_gift_settings($pdo, $server_id) {
+    // 獲取派獎設定資料
+    $table_name = _r("table_name");
+    $account_field = _r("account_field");
+    $field_names = isset($_REQUEST["field_names"]) ? $_REQUEST["field_names"] : array();
+    $field_values = isset($_REQUEST["field_values"]) ? $_REQUEST["field_values"] : array();
+    
+    // 調試日誌
+    error_log("save_gift_settings called with server_id: " . $server_id);
+    error_log("table_name: " . $table_name);
+    error_log("account_field: " . $account_field);
+    error_log("field_names: " . json_encode($field_names));
+    error_log("field_values: " . json_encode($field_values));
+    
+    // 如果有基本設定資料，處理派獎設定主表
+    if(!empty($table_name) || !empty($account_field)) {
+        // 先檢查是否已存在
+        $check_query = $pdo->prepare("SELECT id FROM send_gift_settings WHERE server_id = :server_id");
+        $check_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+        $check_query->execute();
+        
+        if($existing = $check_query->fetch()) {
+            // 更新現有記錄
+            error_log("Updating existing gift settings ID: " . $existing['id']);
+            $update_query = $pdo->prepare("
+                UPDATE send_gift_settings SET 
+                    table_name = :table_name,
+                    account_field = :account_field
+                WHERE id = :id
+            ");
+            $update_query->bindValue(':id', $existing['id'], PDO::PARAM_INT);
+            $update_query->bindValue(':table_name', $table_name, PDO::PARAM_STR);
+            $update_query->bindValue(':account_field', $account_field, PDO::PARAM_STR);
+            $update_query->execute();
+        } else {
+            // 插入新記錄
+            error_log("Inserting new gift settings");
+            $insert_query = $pdo->prepare("
+                INSERT INTO send_gift_settings (server_id, table_name, account_field) 
+                VALUES (:server_id, :table_name, :account_field)
+            ");
+            $insert_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+            $insert_query->bindValue(':table_name', $table_name, PDO::PARAM_STR);
+            $insert_query->bindValue(':account_field', $account_field, PDO::PARAM_STR);
+            $insert_query->execute();
+        }
+    }
+    
+    // 處理動態欄位 - 先刪除舊的，再插入新的
+    $delete_fields_query = $pdo->prepare("DELETE FROM send_gift_fields WHERE server_id = :server_id");
+    $delete_fields_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+    $delete_fields_query->execute();
+    
+    // 插入新的動態欄位
+    if(!empty($field_names) && !empty($field_values)) {
+        for($i = 0; $i < count($field_names); $i++) {
+            $field_name = isset($field_names[$i]) ? trim($field_names[$i]) : '';
+            $field_value = isset($field_values[$i]) ? trim($field_values[$i]) : '';
+            
+            // 只保存有內容的欄位
+            if(!empty($field_name) && !empty($field_value)) {
+                error_log("Inserting dynamic field: " . $field_name . " = " . $field_value);
+                $insert_field_query = $pdo->prepare("
+                    INSERT INTO send_gift_fields (server_id, field_name, field_value, sort_order) 
+                    VALUES (:server_id, :field_name, :field_value, :sort_order)
+                ");
+                $insert_field_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+                $insert_field_query->bindValue(':field_name', $field_name, PDO::PARAM_STR);
+                $insert_field_query->bindValue(':field_value', $field_value, PDO::PARAM_STR);
+                $insert_field_query->bindValue(':sort_order', $i, PDO::PARAM_INT);
+                $insert_field_query->execute();
+            }
+        }
+    }
+}
+
 function save_bank_funds($pdo, $server_id) {
     // 獲取銀行轉帳金流設定
     $pay_bank = _r("pay_bank");
@@ -484,6 +560,9 @@ if(_r("st") == 'addsave') {
         
         // 處理銀行轉帳金流設定
         save_bank_funds($pdo, $new_server_id);
+        
+        // 處理派獎設定
+        save_gift_settings($pdo, $new_server_id);
 
         alert("伺服器新增完成。", "index.php");
 
@@ -570,6 +649,9 @@ if(_r("st") == 'addsave') {
 
     // 處理銀行轉帳金流設定
     save_bank_funds($pdo, $an);
+    
+    // 處理派獎設定
+    save_gift_settings($pdo, $an);
 
     alert("伺服器修改完成。", "index.php");
 
@@ -613,6 +695,23 @@ if(!empty($an = _r("an"))) {
             'verify_key' => $fund['verify_key']
         ];
     }
+    
+    // 載入派獎設定資料
+    $gift_query = $pdo->prepare("SELECT * FROM send_gift_settings WHERE server_id = :server_id");
+    $gift_query->bindValue(':server_id', $an, PDO::PARAM_STR);
+    $gift_query->execute();
+    $gift_settings = $gift_query->fetch(PDO::FETCH_ASSOC);
+    
+    if($gift_settings) {
+        $datalist['table_name'] = $gift_settings['table_name'];
+        $datalist['account_field'] = $gift_settings['account_field'];
+    }
+    
+    // 載入動態欄位資料
+    $fields_query = $pdo->prepare("SELECT * FROM send_gift_fields WHERE server_id = :server_id ORDER BY sort_order");
+    $fields_query->bindValue(':server_id', $an, PDO::PARAM_STR);
+    $fields_query->execute();
+    $dynamic_fields = $fields_query->fetchAll(PDO::FETCH_ASSOC);
     
     // 設定預設的金流服務選擇
     // $datalist['pay_bank'] = $first_payment_type;
@@ -698,9 +797,6 @@ top_html();
 <link rel="stylesheet" href="assets/css/jquery.fileupload.css">
 
 <link rel="stylesheet" href="assets/css/jquery.fileupload-ui.css">
-
-<!-- FontAwesome Icons -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
 <noscript><link rel="stylesheet" href="assets/css/jquery.fileupload-noscript.css"></noscript>
 
@@ -1072,9 +1168,7 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 	</td>
 </tr>
 
-<tr><td style="background:#6666ff;color:white;text-align:center;">
-    <i class="fas fa-cog" style="margin-right: 8px;"></i>派獎設定
-</td></tr>
+<tr><td style="background:#6666ff;color:white;text-align:center;">派獎設定</td></tr>
 <tr><td>
     資料表名稱：<input name="table_name" id="table_name" type="text" value="<?=$datalist['table_name']?>">&nbsp;&nbsp;
     帳號欄位：<input name="account_field" id="account_field" type="text" value="<?=$datalist['account_field']?>">
@@ -1166,75 +1260,50 @@ function updateScrollContainer() {
     }
 }
 
+// 載入已存在的動態欄位
+function loadExistingDynamicFields() {
+    if (dynamicFieldsData && dynamicFieldsData.length > 0) {
+        console.log('Loading existing dynamic fields:', dynamicFieldsData);
+        
+        // 清除預設的第一個欄位
+        document.getElementById('dynamic_fields').innerHTML = '';
+        fieldCounter = 0;
+        
+        // 載入每一個已存在的欄位
+        dynamicFieldsData.forEach(function(field) {
+            fieldCounter++;
+            const dynamicFields = document.getElementById('dynamic_fields');
+            const newField = document.createElement('div');
+            newField.className = 'field_pair';
+            newField.id = 'field_pair_' + fieldCounter;
+            newField.style.cssText = 'margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;';
+            newField.innerHTML = `
+                <div style="display: inline-block; margin-right: 15px;">
+                    欄位名稱：<input name="field_names[]" type="text" value="${field.field_name}" style="width: 150px;">
+                </div>
+                <div style="display: inline-block; margin-right: 15px;">
+                    欄位資料：<input name="field_values[]" type="text" value="${field.field_value}" style="width: 200px;">
+                </div>
+                <button type="button" class="delete_field" onclick="removeField(${fieldCounter})" style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer;">刪除</button>
+            `;
+            dynamicFields.appendChild(newField);
+        });
+        
+        // 如果沒有載入任何欄位，添加一個預設欄位
+        if (fieldCounter === 0) {
+            addField();
+        }
+        
+        updateDeleteButtons();
+        updateScrollContainer();
+    }
+}
+
 // 頁面載入時初始化
 document.addEventListener('DOMContentLoaded', function() {
     updateScrollContainer();
-    
-    // 綁定表單提交事件
-    const form = document.forms['form1'];
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            // 取得伺服器ID
-            const serverIdElement = document.getElementById('an');
-            if (serverIdElement && serverIdElement.value) {
-                // 同步提交動態欄位資料到API
-                submitDynamicFields(serverIdElement.value);
-            }
-        });
-    }
+    loadExistingDynamicFields();
 });
-
-// 表單提交時同時送出動態欄位資料到API
-function submitDynamicFields(serverId) {
-    const tableNameElement = document.getElementById('table_name');
-    const accountFieldElement = document.getElementById('account_field');
-    const fieldPairs = document.querySelectorAll('.field_pair');
-    
-    if (!tableNameElement || !accountFieldElement) {
-        console.error('找不到必要的欄位元素');
-        return;
-    }
-    
-    const data = {
-        action: 'save',
-        server_id: serverId,
-        table_name: tableNameElement.value,
-        account_field: accountFieldElement.value,
-        dynamic_fields: []
-    };
-    
-    fieldPairs.forEach(pair => {
-        const nameInput = pair.querySelector('input[name="field_names[]"]');
-        const valueInput = pair.querySelector('input[name="field_values[]"]');
-        
-        if (nameInput && valueInput && nameInput.value.trim() !== '') {
-            data.dynamic_fields.push({
-                field_name: nameInput.value.trim(),
-                field_value: valueInput.value.trim()
-            });
-        }
-    });
-    
-    // 發送到動態欄位API
-    fetch('dynamic_fields_api.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            console.log('動態欄位資料同步成功:', result);
-        } else {
-            console.error('動態欄位資料同步失敗:', result.message);
-        }
-    })
-    .catch(error => {
-        console.error('API呼叫錯誤:', error);
-    });
-}
 </script>
 
   </tbody>
@@ -1298,6 +1367,10 @@ function submitDynamicFields(serverId) {
 // 銀行金流服務資料
 var bankFundsData = <?=json_encode($bank_funds_js ?? [])?>;
 console.log('bankFundsData loaded:', bankFundsData);
+
+// 派獎動態欄位資料
+var dynamicFieldsData = <?=json_encode($dynamic_fields ?? [])?>;
+console.log('dynamicFieldsData loaded:', dynamicFieldsData);
 
 $(function() {  
 

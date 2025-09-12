@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gift API 測試工具</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .test-section h3 { margin-top: 0; }
+        .result { margin: 10px 0; padding: 10px; background: #f9f9f9; border-radius: 3px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 8px 15px; margin: 5px; cursor: pointer; }
+        input, textarea, select { padding: 5px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Gift API 測試工具</h1>
+    
+    <div class="test-section">
+        <h3>1. 取得伺服器列表</h3>
+        <button onclick="testGetServers()">測試 get_servers</button>
+        <div id="servers-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. 伺服器物品管理</h3>
+        <div>
+            <label>伺服器ID: <input type="text" id="server-id" placeholder="輸入伺服器ID" value="145"></label><br>
+            <button onclick="testGetServerItems()">取得物品列表</button>
+        </div>
+        <div>
+            <label>遊戲名稱: <input type="text" id="item-game-name" placeholder="物品遊戲名稱"></label><br>
+            <label>資料庫名稱: <input type="text" id="item-db-name" placeholder="資料庫物品名稱"></label><br>
+            <button onclick="testAddServerItem()">新增物品</button>
+        </div>
+        <div>
+            <label>物品ID: <input type="text" id="delete-item-id" placeholder="要刪除的物品ID"></label><br>
+            <button onclick="testDeleteServerItem()">刪除物品</button>
+        </div>
+        <div id="server-items-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. 派獎設定管理</h3>
+        <div>
+            <label>伺服器ID: <input type="text" id="settings-server-id" placeholder="伺服器ID" value="145"></label><br>
+            <button onclick="testGetGiftSettings()">取得派獎設定</button>
+        </div>
+        <div>
+            <label>資料表名稱: <input type="text" id="table-name" placeholder="資料表名稱"></label><br>
+            <label>帳號欄位: <input type="text" id="account-field" placeholder="帳號欄位"></label><br>
+            <label>動態欄位 (JSON): <textarea id="dynamic-fields" placeholder='[{"field_name":"欄位1","field_value":"值1"}]'></textarea></label><br>
+            <button onclick="testSaveGiftSettings()">儲存派獎設定</button>
+        </div>
+        <div id="gift-settings-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. 派獎操作</h3>
+        <div>
+            <label>伺服器ID: <input type="text" id="send-server-id" placeholder="伺服器ID" value="145"></label><br>
+            <label>伺服器名稱: <input type="text" id="send-server-name" placeholder="伺服器名稱" value="測試伺服器"></label><br>
+            <label>遊戲帳號: <input type="text" id="send-game-account" placeholder="遊戲帳號" value="testuser"></label><br>
+            <label>物品 (JSON): <textarea id="send-items" placeholder='[{"name":"測試物品","databaseName":"test_item","quantity":1}]'>[{"name":"測試物品","databaseName":"test_item","quantity":1}]</textarea></label><br>
+            <button onclick="testSendGift()">送出禮物</button>
+        </div>
+        <div id="send-gift-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>5. 派獎記錄</h3>
+        <div>
+            <label>伺服器ID (選填): <input type="text" id="logs-server-id" placeholder="伺服器ID (選填)"></label><br>
+            <label>頁數: <input type="number" id="logs-page" value="1" min="1"></label>
+            <label>每頁筆數: <input type="number" id="logs-limit" value="10" min="1" max="100"></label><br>
+            <button onclick="testGetGiftLogs()">取得派獎記錄</button>
+        </div>
+        <div id="gift-logs-result" class="result"></div>
+    </div>
+
+    <script>
+        function showResult(elementId, data, isError = false) {
+            const element = document.getElementById(elementId);
+            element.className = 'result ' + (isError ? 'error' : 'success');
+            element.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+        }
+
+        function testGetServers() {
+            $.ajax({
+                url: 'api/gift_api.php',
+                method: 'GET',
+                data: { action: 'get_servers' },
+                dataType: 'json'
+            })
+            .done(function(response) {
+                showResult('servers-result', response);
+            })
+            .fail(function(xhr, status, error) {
+                showResult('servers-result', { error: error, status: status, response: xhr.responseText }, true);
+            });
+        }
+
+        function testGetServerItems() {
+            const serverId = $('#server-id').val();
+            if (!serverId) {
+                alert('請輸入伺服器ID');
+                return;
+            }
+
+            $.ajax({
+                url: 'api/gift_api.php',
+                method: 'GET',
+                data: { 
+                    action: 'get_server_items',
+                    server_id: serverId
+                },
+                dataType: 'json'
+            })
+            .done(function(response) {
+                showResult('server-items-result', response);
+            })
+            .fail(function(xhr, status, error) {
+                showResult('server-items-result', { error: error, status: status, response: xhr.responseText }, true);
+            });
+        }
+
+        function testAddServerItem() {
+            const serverId = $('#server-id').val();
+            const gameName = $('#item-game-name').val();
+            const dbName = $('#item-db-name').val();
+
+            if (!serverId || !gameName || !dbName) {
+                alert('請填寫所有欄位');
+                return;
+            }
+
+            $.ajax({
+                url: 'api/gift_api.php',
+                method: 'POST',
+                data: {
+                    action: 'add_server_item',
+                    server_id: serverId,
+                    game_name: gameName,
+                    database_name: dbName
+                },
+                dataType: 'json'
+            })
+            .done(function(response) {
+                showResult('server-items-result', response);
+                if (response.success) {
+                    $('#item-game-name').val('');
+                    $('#item-db-name').val('');
+                }
+            })
+            .fail(function(xhr, status, error) {
+                showResult('server-items-result', { error: error, status: status, response: xhr.responseText }, true);
+            });
+        }
+
+        function testDeleteServerItem() {
+            const itemId = $('#delete-item-id').val();
+            if (!itemId) {
+                alert('請輸入物品ID');
+                return;
+            }
+
+            if (!confirm('確定要刪除這個物品嗎？')) {
+                return;
+            }
+
+            $.ajax({
+                url: 'api/gift_api.php',
+                method: 'POST',
+                data: {
+                    action: 'delete_server_item',
+                    item_id: itemId
+                },
+                dataType: 'json'
+            })
+            .done(function(response) {
+                showResult('server-items-result', response);
+                if (response.success) {
+                    $('#delete-item-id').val('');
+                }
+            })
+            .fail(function(xhr, status, error) {
+                showResult('server-items-result', { error: error, status: status, response: xhr.responseText }, true);
+            });
+        }
+
+        function testGetGiftSettings() {
+            const serverId = $('#settings-server-id').val();
+            if (!serverId) {
+                alert('請輸入伺服器ID');
+                return;
+            }
+
+            $.ajax({
+                url: 'api/gift_api.php',
+                method: 'GET',
+                data: {
+                    action: 'get_gift_settings',
+                    server_id: serverId
+                },
+                dataType: 'json'
+            })
+            .done(function(response) {
+                showResult('gift-settings-result', response);
+            })
+            .fail(function(xhr, status, error) {
+                showResult('gift-settings-result', { error: error, status: status, response: xhr.responseText }, true);
+            });
+        }
+
+        function testSaveGiftSettings() {
+            const serverId = $('#settings-server-id').val();
+            const tableName = $('#table-name').val();
+            const accountField = $('#account-field').val();
+            const fieldsJson = $('#dynamic-fields').val();
+
+            if (!serverId) {
+                alert('請輸入伺服器ID');
+                return;
+            }
+
+            let fieldNames = [];
+            let fieldValues = [];
+
+            if (fieldsJson) {
+                try {
+                    const fields = JSON.parse(fieldsJson);
+                    if (Array.isArray(fields)) {
+                        fields.forEach(field => {
+                            if (field.field_name && field.field_value) {
+                                fieldNames.push(field.field_name);
+                                fieldValues.push(field.field_value);
+                            }
+                        });
+                    }
+                } catch (e) {
+                    alert('動態欄位 JSON 格式錯誤');
+                    return;
+                }
+            }
+
+            $.ajax({
+                url: 'api/gift_api.php',
+                method: 'POST',
+                data: {
+                    action: 'save_gift_settings',
+                    server_id: serverId,
+                    table_name: tableName,
+                    account_field: accountField,
+                    field_names: fieldNames,
+                    field_values: fieldValues
+                },
+                dataType: 'json'
+            })
+            .done(function(response) {
+                showResult('gift-settings-result', response);
+            })
+            .fail(function(xhr, status, error) {
+                showResult('gift-settings-result', { error: error, status: status, response: xhr.responseText }, true);
+            });
+        }
+
+        function testSendGift() {
+            const serverId = $('#send-server-id').val();
+            const serverName = $('#send-server-name').val();
+            const gameAccount = $('#send-game-account').val();
+            const itemsJson = $('#send-items').val();
+
+            if (!serverId || !serverName || !gameAccount || !itemsJson) {
+                alert('請填寫所有欄位');
+                return;
+            }
+
+            $.ajax({
+                url: 'api/gift_api.php',
+                method: 'POST',
+                data: {
+                    action: 'send_gift',
+                    server_id: serverId,
+                    server_name: serverName,
+                    game_account: gameAccount,
+                    items: itemsJson
+                },
+                dataType: 'json'
+            })
+            .done(function(response) {
+                showResult('send-gift-result', response);
+            })
+            .fail(function(xhr, status, error) {
+                showResult('send-gift-result', { error: error, status: status, response: xhr.responseText }, true);
+            });
+        }
+
+        function testGetGiftLogs() {
+            const serverId = $('#logs-server-id').val();
+            const page = $('#logs-page').val();
+            const limit = $('#logs-limit').val();
+
+            const data = {
+                action: 'get_gift_logs',
+                page: page,
+                limit: limit
+            };
+
+            if (serverId) {
+                data.server_id = serverId;
+            }
+
+            $.ajax({
+                url: 'api/gift_api.php',
+                method: 'GET',
+                data: data,
+                dataType: 'json'
+            })
+            .done(function(response) {
+                showResult('gift-logs-result', response);
+            })
+            .fail(function(xhr, status, error) {
+                showResult('gift-logs-result', { error: error, status: status, response: xhr.responseText }, true);
+            });
+        }
+    </script>
+</body>
+</html>
