@@ -299,6 +299,12 @@ function top_html()
 							<span>白名單</span>
 						</a>
 					</li>
+                    <li>
+						<a href="send_gift">
+                            <i class="main-icon fa-solid fa-gift"></i>
+							<span>手動派獎</span>
+						</a>
+					</li>
 				</ul>
 				<!-- SECOND MAIN LIST -->
 				<ul class="nav nav-list">

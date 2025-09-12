@@ -2,6 +2,7 @@
 
 include("myadm/include.php");
 include_once('payment_class.php');
+include_once('./pay_bank.php');
 
 if (isset($_GET['action'])) {
     switch ($_GET['action']) {
@@ -27,8 +28,10 @@ if (isset($_GET['action'])) {
 
             $env = $servers["gstats"];      // 信用卡環境
             $env2 = $servers["gstats2"];
+            $env_bank = $servers["gstats_bank"];
 
             $paytype = $server_log['paytype'];
+
             if ($paytype == 5){
                 if ($env == 1) {
                     $payment_url = "https://payment.funpoint.com.tw/Cashier/AioCheckOut/V5";
@@ -36,6 +39,23 @@ if (isset($_GET['action'])) {
                     $HashKey = $servers["HashKey"];
                     $HashIV = $servers["HashIV"];			
                 } else {
+                    $payment_url = "https://payment-stage.funpoint.com.tw/Cashier/AioCheckOut/V5";
+                    $MerchantID = "1000031";
+                    $HashKey = "265flDjIvesceXWM";
+                    $HashIV = "pOOvhGd1V2pJbjfX";
+                }
+            } else if ($paytype == 2) {
+                $payment_url = "https://payment.funpoint.com.tw/Cashier/AioCheckOut/V5";
+                // 使用新的 bank_funds 資料表取得 funpoint 銀行轉帳設定
+                $payment_info = getSpecificBankPaymentInfo($pdo, $_POST["lastan"], 'funpoint');
+
+                if ($payment_info && isset($payment_info['payment_config'])) {
+                    $MerchantID = $payment_info['payment_config']['merchant_id'];
+                    $HashKey = $payment_info['payment_config']['hashkey'];
+                    $HashIV = $payment_info['payment_config']['hashiv'];
+                }
+
+                if ($env_bank != 1){
                     $payment_url = "https://payment-stage.funpoint.com.tw/Cashier/AioCheckOut/V5";
                     $MerchantID = "1000031";
                     $HashKey = "265flDjIvesceXWM";

@@ -27,7 +27,7 @@
         <input type="hidden" name="serverid" value="<?=$data["serverid"]?>">
         <input type="hidden" name="lastan" value="<?=$data['lastan']?>">
         <input type="hidden" name="token" value="<?=$data['token']?>">
-        <input type="hidden" name="domain" value="tt.paygo">
+        <input type="hidden" name="domain" value="test.paygo">
     </form>
     <script type="text/javascript">
         document.getElementById('funpoint_to_payok').submit();

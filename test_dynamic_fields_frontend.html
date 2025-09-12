@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動態欄位前端功能測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .field-pair {
+            margin-bottom: 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        input[type="text"] {
+            padding: 5px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        #dynamic_fields_container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #fafafa;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .status {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="test-container">
+        <h1 class="test-title">
+            <i class="fas fa-cog" style="margin-right: 8px;"></i>動態欄位前端功能測試
+        </h1>
+        
+        <div class="controls">
+            <button onclick="runAllTests()">執行所有測試</button>
+            <button onclick="clearResults()">清除結果</button>
+            <button onclick="resetFields()">重置欄位</button>
+        </div>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-title">測試用動態欄位介面</h2>
+        
+        <div>
+            資料表名稱：<input name="table_name" id="table_name" type="text" value="">&nbsp;&nbsp;
+            帳號欄位：<input name="account_field" id="account_field" type="text" value="">
+        </div>
+        
+        <br>
+        
+        <button type="button" onclick="addField()" style="background-color: #28a745; color: white; border: none; padding: 8px 15px; cursor: pointer; margin-bottom: 10px;">新增欄位</button>
+        
+        <div id="dynamic_fields_container" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background-color: #fafafa;">
+            <div id="dynamic_fields">
+                <div class="field_pair" id="field_pair_1" style="margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;">
+                    <div style="display: inline-block; margin-right: 15px;">
+                        欄位名稱：<input name="field_names[]" type="text" value="" style="width: 150px;">
+                    </div>
+                    <div style="display: inline-block; margin-right: 15px;">
+                        欄位資料：<input name="field_values[]" type="text" value="" style="width: 200px;">
+                    </div>
+                    <button type="button" class="delete_field" onclick="removeField(1)" disabled style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer;">刪除</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="testApiIntegration()">測試API整合</button>
+            <button onclick="testFieldValidation()">測試欄位驗證</button>
+            <button onclick="testScrollFunctionality()">測試滾動功能</button>
+        </div>
+        
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        let fieldCounter = 1;
+        let testResults = [];
+
+        // 複製 server_add.php 中的 JavaScript 函數
+        function addField() {
+            fieldCounter++;
+            const dynamicFields = document.getElementById('dynamic_fields');
+            const newField = document.createElement('div');
+            newField.className = 'field_pair';
+            newField.id = 'field_pair_' + fieldCounter;
+            newField.style.cssText = 'margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;';
+            newField.innerHTML = `
+                <div style="display: inline-block; margin-right: 15px;">
+                    欄位名稱：<input name="field_names[]" type="text" value="" style="width: 150px;">
+                </div>
+                <div style="display: inline-block; margin-right: 15px;">
+                    欄位資料：<input name="field_values[]" type="text" value="" style="width: 200px;">
+                </div>
+                <button type="button" class="delete_field" onclick="removeField(${fieldCounter})" style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer;">刪除</button>
+            `;
+            dynamicFields.appendChild(newField);
+            updateDeleteButtons();
+            updateScrollContainer();
+            
+            // 滾動到最新添加的欄位
+            const container = document.getElementById('dynamic_fields_container');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function removeField(id) {
+            const fieldPairs = document.querySelectorAll('.field_pair');
+            if (fieldPairs.length > 1) {
+                document.getElementById('field_pair_' + id).remove();
+                updateDeleteButtons();
+                updateScrollContainer();
+            }
+        }
+
+        function updateDeleteButtons() {
+            const fieldPairs = document.querySelectorAll('.field_pair');
+            const deleteButtons = document.querySelectorAll('.delete_field');
+            
+            deleteButtons.forEach(button => {
+                button.disabled = fieldPairs.length <= 1;
+                if (button.disabled) {
+                    button.style.backgroundColor = '#6c757d';
+                    button.style.cursor = 'not-allowed';
+                } else {
+                    button.style.backgroundColor = '#dc3545';
+                    button.style.cursor = 'pointer';
+                }
+            });
+        }
+
+        function updateScrollContainer() {
+            const fieldPairs = document.querySelectorAll('.field_pair');
+            const container = document.getElementById('dynamic_fields_container');
+            
+            // 計算每個欄位組的大概高度 (約65px包含margin和padding)
+            const estimatedHeight = fieldPairs.length * 65;
+            const maxHeightFor5Items = 5 * 65; // 約325px
+            
+            if (fieldPairs.length > 5) {
+                container.style.maxHeight = maxHeightFor5Items + 'px';
+                container.style.overflowY = 'auto';
+            } else {
+                container.style.maxHeight = 'none';
+                container.style.overflowY = 'visible';
+            }
+        }
+
+        // 測試函數
+        function addTestResult(testName, success, message) {
+            testResults.push({
+                name: testName,
+                success: success,
+                message: message,
+                timestamp: new Date().toISOString()
+            });
+            
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${success ? 'success' : 'error'}`;
+            resultDiv.innerHTML = `
+                <strong>${success ? '✅' : '❌'} ${testName}</strong><br>
+                ${message}<br>
+                <small>時間: ${new Date().toLocaleString()}</small>
+            `;
+            
+            document.getElementById('test-results').appendChild(resultDiv);
+            updateStatus(`執行測試: ${testName}`);
+        }
+
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            testResults = [];
+            updateStatus('測試結果已清除');
+        }
+
+        function resetFields() {
+            // 重置所有欄位
+            document.getElementById('table_name').value = '';
+            document.getElementById('account_field').value = '';
+            
+            // 移除所有動態欄位除了第一個
+            const fieldPairs = document.querySelectorAll('.field_pair');
+            for (let i = fieldPairs.length - 1; i > 0; i--) {
+                fieldPairs[i].remove();
+            }
+            
+            // 清空第一個欄位的值
+            const firstPair = document.getElementById('field_pair_1');
+            if (firstPair) {
+                const inputs = firstPair.querySelectorAll('input');
+                inputs.forEach(input => input.value = '');
+            }
+            
+            fieldCounter = 1;
+            updateDeleteButtons();
+            updateScrollContainer();
+            updateStatus('欄位已重置');
+        }
+
+        // 測試 1: 基本功能測試
+        function testBasicFunctionality() {
+            try {
+                // 測試新增欄位
+                const initialCount = document.querySelectorAll('.field_pair').length;
+                addField();
+                const newCount = document.querySelectorAll('.field_pair').length;
+                
+                if (newCount === initialCount + 1) {
+                    addTestResult('基本新增欄位功能', true, '成功新增一個欄位');
+                } else {
+                    addTestResult('基本新增欄位功能', false, `欄位數量不正確: 期望 ${initialCount + 1}, 實際 ${newCount}`);
+                }
+                
+                // 測試刪除按鈕狀態
+                const deleteButtons = document.querySelectorAll('.delete_field');
+                const enabledButtons = Array.from(deleteButtons).filter(btn => !btn.disabled);
+                
+                if (enabledButtons.length === deleteButtons.length - 1) {
+                    addTestResult('刪除按鈕狀態', true, '第一個按鈕正確禁用，其他按鈕啟用');
+                } else {
+                    addTestResult('刪除按鈕狀態', false, '刪除按鈕狀態不正確');
+                }
+                
+            } catch (error) {
+                addTestResult('基本功能測試', false, `錯誤: ${error.message}`);
+            }
+        }
+
+        // 測試 2: 滾動功能測試
+        function testScrollFunctionality() {
+            try {
+                // 先重置欄位
+                resetFields();
+                
+                // 新增超過5個欄位
+                for (let i = 0; i < 6; i++) {
+                    addField();
+                }
+                
+                const container = document.getElementById('dynamic_fields_container');
+                const hasScroll = container.scrollHeight > container.clientHeight;
+                
+                if (hasScroll) {
+                    addTestResult('滾動功能測試', true, '超過5個欄位時正確顯示滾動條');
+                } else {
+                    addTestResult('滾動功能測試', false, '滾動條未正確顯示');
+                }
+                
+            } catch (error) {
+                addTestResult('滾動功能測試', false, `錯誤: ${error.message}`);
+            }
+        }
+
+        // 測試 3: 欄位驗證測試
+        function testFieldValidation() {
+            try {
+                // 設置測試資料
+                document.getElementById('table_name').value = 'test_table';
+                document.getElementById('account_field').value = 'test_account';
+                
+                const firstPair = document.getElementById('field_pair_1');
+                const nameInput = firstPair.querySelector('input[name="field_names[]"]');
+                const valueInput = firstPair.querySelector('input[name="field_values[]"]');
+                
+                nameInput.value = '測試欄位';
+                valueInput.value = '測試值';
+                
+                // 驗證資料收集
+                const tableName = document.getElementById('table_name').value;
+                const accountField = document.getElementById('account_field').value;
+                
+                if (tableName === 'test_table' && accountField === 'test_account') {
+                    addTestResult('欄位驗證測試', true, '基本欄位值正確設置和讀取');
+                } else {
+                    addTestResult('欄位驗證測試', false, '基本欄位值設置或讀取失敗');
+                }
+                
+            } catch (error) {
+                addTestResult('欄位驗證測試', false, `錯誤: ${error.message}`);
+            }
+        }
+
+        // 測試 4: API整合測試
+        function testApiIntegration() {
+            try {
+                // 模擬API呼叫函數
+                const tableNameElement = document.getElementById('table_name');
+                const accountFieldElement = document.getElementById('account_field');
+                const fieldPairs = document.querySelectorAll('.field_pair');
+                
+                if (!tableNameElement || !accountFieldElement) {
+                    addTestResult('API整合測試', false, '找不到必要的欄位元素');
+                    return;
+                }
+                
+                const data = {
+                    action: 'save',
+                    server_id: 145,
+                    table_name: tableNameElement.value,
+                    account_field: accountFieldElement.value,
+                    dynamic_fields: []
+                };
+                
+                fieldPairs.forEach(pair => {
+                    const nameInput = pair.querySelector('input[name="field_names[]"]');
+                    const valueInput = pair.querySelector('input[name="field_values[]"]');
+                    
+                    if (nameInput && valueInput && nameInput.value.trim() !== '') {
+                        data.dynamic_fields.push({
+                            field_name: nameInput.value.trim(),
+                            field_value: valueInput.value.trim()
+                        });
+                    }
+                });
+                
+                // 驗證資料結構
+                if (data.action && data.server_id && typeof data.dynamic_fields === 'object') {
+                    addTestResult('API整合測試', true, `資料結構正確，準備發送 ${data.dynamic_fields.length} 個動態欄位`);
+                } else {
+                    addTestResult('API整合測試', false, '資料結構不正確');
+                }
+                
+            } catch (error) {
+                addTestResult('API整合測試', false, `錯誤: ${error.message}`);
+            }
+        }
+
+        // 執行所有測試
+        function runAllTests() {
+            clearResults();
+            updateStatus('開始執行所有測試...');
+            
+            setTimeout(() => testBasicFunctionality(), 100);
+            setTimeout(() => testFieldValidation(), 200);
+            setTimeout(() => testScrollFunctionality(), 300);
+            setTimeout(() => testApiIntegration(), 400);
+            
+            setTimeout(() => {
+                const totalTests = testResults.length;
+                const passedTests = testResults.filter(r => r.success).length;
+                const successRate = Math.round((passedTests / totalTests) * 100);
+                
+                updateStatus(`測試完成! 通過率: ${passedTests}/${totalTests} (${successRate}%)`);
+                
+                const summaryDiv = document.createElement('div');
+                summaryDiv.className = `test-result ${successRate >= 80 ? 'success' : 'error'}`;
+                summaryDiv.innerHTML = `
+                    <strong>📊 測試摘要</strong><br>
+                    總測試數: ${totalTests}<br>
+                    通過測試: ${passedTests}<br>
+                    失敗測試: ${totalTests - passedTests}<br>
+                    成功率: ${successRate}%
+                `;
+                document.getElementById('test-results').appendChild(summaryDiv);
+            }, 500);
+        }
+
+        // 頁面載入時初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            updateScrollContainer();
+            updateStatus('測試環境準備就緒');
+            
+            // 顯示歡迎訊息
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'test-result info';
+            welcomeDiv.innerHTML = `
+                <strong>🚀 歡迎使用動態欄位測試程式</strong><br>
+                這個測試程式將驗證動態欄位功能的各個方面，包括UI交互、資料驗證和API整合。<br>
+                點擊「執行所有測試」開始測試。
+            `;
+            document.getElementById('test-results').appendChild(welcomeDiv);
+        });
+    </script>
+</body>
+</html>

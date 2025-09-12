@@ -6,12 +6,7 @@ include("../phpclass/SimpleImage.php");
 
 check_login();
 
-
-
-
-
 $target_dir = "../assets/images/custombg/";
-
 
 // _r 表示測試$_REQUEST是否有值
 if(_r("st") == "readcustombg") {
@@ -35,8 +30,6 @@ if(_r("st") == "readcustombg") {
 	exit;
 
 }
-
-
 
 if(_r("st") == "clearcustombg") {
 
@@ -82,47 +75,25 @@ function photo_reset_reg($f = '', $ext = '') {
 
   }
 
-	
-
 	$check = getimagesize($f);
 
-
-
-  if($check !== false) { // 如果是照片    
-
-    if($ext != "jpg" && $ext != "png" && $ext != "jpeg" && $ext != "gif" ) {        
-
-      return '檔案只能是 jpg, png, jpeg, gif 。';        
-
+  if($check !== false) { // 如果是照片
+    if($ext != "jpg" && $ext != "png" && $ext != "jpeg" && $ext != "gif" ) {
+      return '檔案只能是 jpg, png, jpeg, gif 。';
     }
 
-
-
     $image = new \claviska\SimpleImage();
-
     $image->fromFile($f);
-
     $image->autoOrient();
 
     return true;
-
   } else { // 如果不是照片
-
-
-
     return '非允許的檔案類型。';
-
-  	
-
   }
 
   return true;
 
 }
-
-
-
-
 
 if(_r("st") === "upload") {
 
@@ -144,78 +115,52 @@ if(_r("st") === "upload") {
 
 	$target_file = $target_dir . $newfilename;
 
-
-
   $pcheck = photo_reset_reg($_FILES["file"]["tmp_name"], $imageFileType);
-
   if($pcheck !== true) {
-
   	echo $pcheck;
-
   	exit;
-
   }
 
-           
+  if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+		$pdo = openpdo();
+		$chkq1 = $pdo->prepare("select custombg from servers where auton=:an");
+		$chkq1->bindValue(':an', $an, PDO::PARAM_STR);
+		$chkq1->execute();
 
-          if (move_uploaded_file($_FILES["file"]["tmp_name"], $target_file)) {
+		if($cq1 = $chkq1->fetch()) {
+			if(!empty($cq1["custombg"])) unlink($target_dir.$cq1["custombg"]);
+		}
 
-			$pdo = openpdo();
+		$chkq = $pdo->prepare("update servers set custombg = :v where auton=:an");
+		$chkq->bindValue(':an', $an, PDO::PARAM_STR);
+		$chkq->bindValue(':v', $newfilename, PDO::PARAM_STR);
+		$chkq->execute();
 
-			$chkq1 = $pdo->prepare("select custombg from servers where auton=:an");
-
-			$chkq1->bindValue(':an', $an, PDO::PARAM_STR);            
-
-            $chkq1->execute();
-
-			if($cq1 = $chkq1->fetch()) {
-
-				if(!empty($cq1["custombg"])) unlink($target_dir.$cq1["custombg"]);
-
-			}
-
-
-
-            $chkq = $pdo->prepare("update servers set custombg = :v where auton=:an");            
-
-            $chkq->bindValue(':an', $an, PDO::PARAM_STR);
-
-            $chkq->bindValue(':v', $newfilename, PDO::PARAM_STR);            
-
-            $chkq->execute();
-
-                       
-
-          	echo 'uploadfix';
-
-            exit;            
-
-          } else {
-
-            echo '不明錯誤';
-
-            exit;
-
-          }
+		echo 'uploadfix';
+		exit;
+  } else {
+		echo '不明錯誤';
+		exit;
+  }
 
 	exit;
-
 }
-
-
 
 function save_bank_funds($pdo, $server_id) {
     // 獲取銀行轉帳金流設定
     $pay_bank = _r("pay_bank");
     $gstats_bank = _r("gstats_bank");
     
+    // 調試日誌
+    error_log("save_bank_funds called with pay_bank: " . $pay_bank . ", server_id: " . $server_id);
+    
     if(empty($pay_bank) || $pay_bank == 'no') {
         // 如果沒有選擇銀行金流服務或選擇"無"，刪除該服務類型的設定（保留其他服務）
         if(!empty($pay_bank) && $pay_bank == 'no') {
             // 僅刪除所有該伺服器的銀行金流設定（因為用戶明確選擇"無"）
-            $delete_query = $pdo->prepare("DELETE FROM bank_funds WHERE server_code = :server_code");
-            $delete_query->bindValue(':server_code', $server_id, PDO::PARAM_STR);
-            $delete_query->execute();
+            // $delete_query = $pdo->prepare("DELETE FROM bank_funds WHERE server_code = :server_code");
+            // $delete_query->bindValue(':server_code', $server_id, PDO::PARAM_STR);
+            // $delete_query->execute();
         }
         return;
     }
@@ -225,9 +170,7 @@ function save_bank_funds($pdo, $server_id) {
     
     switch($pay_bank) {
         case 'ecpay':
-        case 'ebpay':  
-        case 'funpoint':
-            // 這三種使用相同的欄位結構 (HashKey/HashIV)
+            // 綠界金流
             $merchant_id = _r("MerchantID_bank");
             $hashkey = _r("HashKey_bank");
             $hashiv = _r("HashIV_bank");
@@ -235,7 +178,43 @@ function save_bank_funds($pdo, $server_id) {
             if(!empty($merchant_id)) {
                 $bank_funds_data[] = [
                     'server_code' => $server_id,
-                    'third_party_payment' => $pay_bank,
+                    'third_party_payment' => 'ecpay',
+                    'merchant_id' => $merchant_id,
+                    'hashkey' => $hashkey,
+                    'hashiv' => $hashiv,
+                    'verify_key' => null
+                ];
+            }
+            break;
+            
+        case 'ebpay':  
+            // 藍新金流
+            $merchant_id = _r("MerchantID_bank");
+            $hashkey = _r("HashKey_bank");
+            $hashiv = _r("HashIV_bank");
+            
+            if(!empty($merchant_id)) {
+                $bank_funds_data[] = [
+                    'server_code' => $server_id,
+                    'third_party_payment' => 'ebpay',
+                    'merchant_id' => $merchant_id,
+                    'hashkey' => $hashkey,
+                    'hashiv' => $hashiv,
+                    'verify_key' => null
+                ];
+            }
+            break;
+            
+        case 'funpoint':
+            // 歐買尬金流
+            $merchant_id = _r("MerchantID_bank");
+            $hashkey = _r("HashKey_bank");
+            $hashiv = _r("HashIV_bank");
+            
+            if(!empty($merchant_id)) {
+                $bank_funds_data[] = [
+                    'server_code' => $server_id,
+                    'third_party_payment' => 'funpoint',
                     'merchant_id' => $merchant_id,
                     'hashkey' => $hashkey,
                     'hashiv' => $hashiv,
@@ -283,7 +262,7 @@ function save_bank_funds($pdo, $server_id) {
             if(!empty($merchant_id)) {
                 $bank_funds_data[] = [
                     'server_code' => $server_id,
-                    'third_party_payment' => 'szfupay',
+                    'third_party_payment' => 'szfu',
                     'merchant_id' => $merchant_id,
                     'hashkey' => null,
                     'hashiv' => null,
@@ -311,25 +290,49 @@ function save_bank_funds($pdo, $server_id) {
     
     // 使用 UPSERT 邏輯：如果記錄存在則更新，不存在則插入
     foreach($bank_funds_data as $data) {
-        $upsert_query = $pdo->prepare("
-            INSERT INTO bank_funds (server_code, third_party_payment, merchant_id, hashkey, hashiv, verify_key) 
-            VALUES (:server_code, :third_party_payment, :merchant_id, :hashkey, :hashiv, :verify_key)
-            ON DUPLICATE KEY UPDATE 
-                merchant_id = VALUES(merchant_id),
-                hashkey = VALUES(hashkey),
-                hashiv = VALUES(hashiv),
-                verify_key = VALUES(verify_key),
-                updated_at = CURRENT_TIMESTAMP
+        error_log("Processing bank fund data: " . json_encode($data));
+        
+        // 先檢查是否已存在
+        $check_query = $pdo->prepare("
+            SELECT id FROM bank_funds 
+            WHERE server_code = :server_code AND third_party_payment = :third_party_payment
         ");
+        $check_query->bindValue(':server_code', $data['server_code'], PDO::PARAM_STR);
+        $check_query->bindValue(':third_party_payment', $data['third_party_payment'], PDO::PARAM_STR);
+        $check_query->execute();
         
-        $upsert_query->bindValue(':server_code', $data['server_code'], PDO::PARAM_STR);
-        $upsert_query->bindValue(':third_party_payment', $data['third_party_payment'], PDO::PARAM_STR);
-        $upsert_query->bindValue(':merchant_id', $data['merchant_id'], PDO::PARAM_STR);
-        $upsert_query->bindValue(':hashkey', $data['hashkey'], PDO::PARAM_STR);
-        $upsert_query->bindValue(':hashiv', $data['hashiv'], PDO::PARAM_STR);
-        $upsert_query->bindValue(':verify_key', $data['verify_key'], PDO::PARAM_STR);
-        
-        $upsert_query->execute();
+        if($existing = $check_query->fetch()) {
+            // 更新現有記錄
+            error_log("Updating existing record ID: " . $existing['id']);
+            $update_query = $pdo->prepare("
+                UPDATE bank_funds SET 
+                    merchant_id = :merchant_id,
+                    hashkey = :hashkey,
+                    hashiv = :hashiv,
+                    verify_key = :verify_key
+                WHERE id = :id
+            ");
+            $update_query->bindValue(':id', $existing['id'], PDO::PARAM_INT);
+            $update_query->bindValue(':merchant_id', $data['merchant_id'], PDO::PARAM_STR);
+            $update_query->bindValue(':hashkey', $data['hashkey'], PDO::PARAM_STR);
+            $update_query->bindValue(':hashiv', $data['hashiv'], PDO::PARAM_STR);
+            $update_query->bindValue(':verify_key', $data['verify_key'], PDO::PARAM_STR);
+            $update_query->execute();
+        } else {
+            // 插入新記錄
+            error_log("Inserting new record");
+            $insert_query = $pdo->prepare("
+                INSERT INTO bank_funds (server_code, third_party_payment, merchant_id, hashkey, hashiv, verify_key) 
+                VALUES (:server_code, :third_party_payment, :merchant_id, :hashkey, :hashiv, :verify_key)
+            ");
+            $insert_query->bindValue(':server_code', $data['server_code'], PDO::PARAM_STR);
+            $insert_query->bindValue(':third_party_payment', $data['third_party_payment'], PDO::PARAM_STR);
+            $insert_query->bindValue(':merchant_id', $data['merchant_id'], PDO::PARAM_STR);
+            $insert_query->bindValue(':hashkey', $data['hashkey'], PDO::PARAM_STR);
+            $insert_query->bindValue(':hashiv', $data['hashiv'], PDO::PARAM_STR);
+            $insert_query->bindValue(':verify_key', $data['verify_key'], PDO::PARAM_STR);
+            $insert_query->execute();
+        }
     }
 }
 
@@ -390,300 +393,176 @@ if(_r("st") == 'addsave') {
 	if($stats == "") alert("請輸入狀態。", 0);
 
 	if($stats == "1") $stats = 1;
-
 	else $stats = 0;
 
-	
 
 	if($gstats == "1") $gstats = 1;
-
 	else $gstats = 0;
 
 	if($gstats2 == "1") $gstats2 = 1;
-
 	else $gstats2 = 0;
 
 	if($gstats_bank == "1") $gstats_bank = 1;
 
 	else $gstats_bank = 0;
 
-	/*
-
-	if($ip == "") alert("請輸入資料庫位置。", 0);
-
-	if($port == "") alert("請輸入資料庫端口。", 0);
-
-	if($dbname == "") alert("請輸入資料庫名稱,不能純數字。", 0);
-
-	if($user == "") alert("請輸入資料庫帳號。", 0);
-
-	if($pass == "") alert("請輸入資料庫密碼。", 0);
-
-	*/
-
-	
-
-	if($an == "") {		
-
-	  $pdo = openpdo(); 
-
-	  $query = $pdo->query("SELECT * FROM servers where names='".$names."' or id='".$id."'");
-
-    $query->execute();
-
-    if($datalist = $query->fetch()) {
-
-    	$pdo = null;
-
-    	alert("資料庫中已經有重覆的伺服器名稱或尾綴代號。", 0);
-
-    	die();
-
-    }
-
-	  
-
-	$input = [
-
-	    'des' => $des, 
-
-		'pay_cp' => $pay_cp,
-
-		'pay_cp2' => $pay_cp2,
-
-		'id' => $id,
-
-        'game' => $game,
-
-		'names' => $names,
-
-		'stats' => $stats,
-
-		'db_ip' => $ip,
-
-		'db_port' => $port,
-
-		'db_name' => $dbname,
-
-		'db_user' => $user,
-
-		'db_pass' => $pass,
-
-		'db_pid'=> $pid,
-
-		'db_bonusid'=> $bonusid,
-
-		'db_bonusrate'=> $bonusrate,
-
-		'base_money' => $base_money,
-
-		'HashIV' => _r("HashIV"),
-
-		'HashKey' => _r("HashKey"),
-
-		'MerchantID' => _r("MerchantID"),
-
-		'pchome_app_id' => _r("pchome_app_id"),
-
-	    'pchome_secret_code' => _r("pchome_secret_code"),
-
-		'gomypay_shop_id' => _r("gomypay_shop_id"),
-
-	    'gomypay_key' => _r("gomypay_key"),
-
-		'smilepay_shop_id' => _r("smilepay_shop_id"),
-
-	    'smilepay_key' => _r("smilepay_key"),
-
-		'gstats' => _r("gstats"),
-
-		'HashIV2' => _r("HashIV2"),
-
-		'HashKey2' => _r("HashKey2"),
-
-		'MerchantID2' => _r("MerchantID2"),
-
-		'pchome_app_id2' => _r("pchome_app_id2"),
-
-	    'pchome_secret_code2' => _r("pchome_secret_code2"),
-
-		'gomypay_shop_id2' => _r("gomypay_shop_id2"),
-
-	    'gomypay_key2' => _r("gomypay_key2"),
-
-		'smilepay_shop_id2' => _r("smilepay_shop_id2"),
-
-	    'smilepay_key2' => _r("smilepay_key2"),
-
-		'szfupay_shop_id2' => _r("szfupay_shop_id2"),
-
-	    'szfupay_key2' => _r("szfupay_key2"),
-
-		'gstats2' => _r("gstats2"),
-
-		'paytable' => _r("paytable"),
-
-		'gp' => $gp,
-
-		'products' => _r("products"),
-
-		'max_credit' => _r("max_credit"),
-
-		'max_store' => _r("max_store"),
-
-		'max_bank' => _r("max_bank"),
-
-		'pay_bank' => $pay_bank,
-
-		'gstats_bank' => $gstats_bank
-
-	];
-
-	$dbclassupdatesql = implode(",", array_keys($input));
-
-	foreach($input as $k => $v ) {
-
-	  $i2arr[] = ':'.$k;
-
-	  $dbclassupdateprep[':'.$k] = $v;
-
-	}
-
-	$i2sql = implode(",", $i2arr);
-
-    $query = $pdo->prepare('INSERT INTO servers ('.$dbclassupdatesql.') VALUES ('.$i2sql.')');    
-
-    $query->execute($dbclassupdateprep);
-
-    // 取得新建立的伺服器ID
-    $new_server_id = $pdo->lastInsertId();
-    
-    // 處理銀行轉帳金流設定
-    save_bank_funds($pdo, $new_server_id);
-
-    alert("伺服器新增完成。", "index.php");
-
-    die();
-
-		
+	if($an == "") {
+        $pdo = openpdo();
+        $query = $pdo->query("SELECT * FROM servers where names='".$names."' or id='".$id."'");
+        $query->execute();
+
+        if($datalist = $query->fetch()) {
+            $pdo = null;
+            alert("資料庫中已經有重覆的伺服器名稱或尾綴代號。", 0);
+            die();
+        }
+
+        $input = [
+            'des' => $des,
+            'pay_cp' => $pay_cp,
+            'pay_cp2' => $pay_cp2,
+            'id' => $id,
+            'game' => $game,
+            'names' => $names,
+            'stats' => $stats,
+            'db_ip' => $ip,
+            'db_port' => $port,
+            'db_name' => $dbname,
+            'db_user' => $user,
+            'db_pass' => $pass,
+            'db_pid'=> $pid,
+            'db_bonusid'=> $bonusid,
+            'db_bonusrate'=> $bonusrate,
+            'base_money' => $base_money,
+            'HashIV' => _r("HashIV"),
+            'HashKey' => _r("HashKey"),
+            'MerchantID' => _r("MerchantID"),
+            'pchome_app_id' => _r("pchome_app_id"),
+            'pchome_secret_code' => _r("pchome_secret_code"),
+            'gomypay_shop_id' => _r("gomypay_shop_id"),
+            'gomypay_key' => _r("gomypay_key"),
+            'smilepay_shop_id' => _r("smilepay_shop_id"),
+            'smilepay_key' => _r("smilepay_key"),
+            'gstats' => _r("gstats"),
+            'HashIV2' => _r("HashIV2"),
+            'HashKey2' => _r("HashKey2"),
+            'MerchantID2' => _r("MerchantID2"),
+            'pchome_app_id2' => _r("pchome_app_id2"),
+            'pchome_secret_code2' => _r("pchome_secret_code2"),
+            'gomypay_shop_id2' => _r("gomypay_shop_id2"),
+            'gomypay_key2' => _r("gomypay_key2"),
+            'smilepay_shop_id2' => _r("smilepay_shop_id2"),
+            'smilepay_key2' => _r("smilepay_key2"),
+            'szfupay_shop_id2' => _r("szfupay_shop_id2"),
+            'szfupay_key2' => _r("szfupay_key2"),
+            'gstats2' => _r("gstats2"),
+            'paytable' => _r("paytable"),
+            'gp' => $gp,
+            'products' => _r("products"),
+            'max_credit' => _r("max_credit"),
+            'max_store' => _r("max_store"),
+            'max_bank' => _r("max_bank"),
+            'pay_bank' => $pay_bank,
+            'gstats_bank' => $gstats_bank
+        ];
+
+        $dbclassupdatesql = implode(",", array_keys($input));
+
+        foreach($input as $k => $v ) {
+        $i2arr[] = ':'.$k;
+        $dbclassupdateprep[':'.$k] = $v;
+        }
+
+        $i2sql = implode(",", $i2arr);
+
+        $query = $pdo->prepare('INSERT INTO servers ('.$dbclassupdatesql.') VALUES ('.$i2sql.')');    
+
+        $query->execute($dbclassupdateprep);
+
+        // 取得新建立的伺服器ID
+        $new_server_id = $pdo->lastInsertId();
+        
+        // 處理銀行轉帳金流設定
+        save_bank_funds($pdo, $new_server_id);
+
+        alert("伺服器新增完成。", "index.php");
+
+        die();
 
 	} else {
-
-
-
-	  $pdo = openpdo(); 
+	  $pdo = openpdo();
 
 	  $input = [
-
 		  'des' => $des,
-
 		  'pay_cp' => $pay_cp,
-
 		  'pay_cp2' => $pay_cp2,
-
 		  'id' => $id,
-
           'game' => $game,
-
 		  'names' => $names,
-
 		  'stats' => $stats,
-
 		  'db_ip' => $ip,
-
 		  'db_port' => $port,
-
 		  'db_name' => $dbname,
-
 		  'db_user' => $user,
-
 		  'db_pass' => $pass,
-
 		  'db_pid'=> $pid,
-
 		  'db_bonusid'=> $bonusid,
-
 		  'db_bonusrate'=> $bonusrate,
-
 		  'base_money' => $base_money,
-
 		  'HashIV' => _r("HashIV"),
-
 		  'HashKey' => _r("HashKey"),
-
 		  'MerchantID' => _r("MerchantID"),
-
 		  'pchome_app_id' => _r("pchome_app_id"),
-
 		  'pchome_secret_code' => _r("pchome_secret_code"),
-
 		  'gomypay_shop_id' => _r("gomypay_shop_id"),
-
 		  'gomypay_key' => _r("gomypay_key"),
-
 		  'smilepay_shop_id' => _r("smilepay_shop_id"),
-
 		  'smilepay_key' => _r("smilepay_key"),
-
 		  'gstats' => _r("gstats"),
-
 		  'HashIV2' => _r("HashIV2"),
-
 		  'HashKey2' => _r("HashKey2"),
-
 		  'MerchantID2' => _r("MerchantID2"),
-
 		  'pchome_app_id2' => _r("pchome_app_id2"),
-
 		  'pchome_secret_code2' => _r("pchome_secret_code2"),
-
 		  'gomypay_shop_id2' => _r("gomypay_shop_id2"),
-
 		  'gomypay_key2' => _r("gomypay_key2"),
-
 		  'smilepay_shop_id2' => _r("smilepay_shop_id2"),
-
 		  'smilepay_key2' => _r("smilepay_key2"),
-
 		  'szfupay_shop_id2' => _r("szfupay_shop_id2"),
-
 		  'szfupay_key2' => _r("szfupay_key2"),
-
 		  'gstats2' => _r("gstats2"),
-
 		  'paytable' => _r("paytable"),
-
 		  'gp' => $gp,
-
 		  'products' => _r("products"),
-
 		  'max_credit' => _r("max_credit"),
-
 		  'max_store' => _r("max_store"),
-
 		  'max_bank' => _r("max_bank"),
-
 		  'pay_bank' => $pay_bank,
-
 		  'gstats_bank' => $gstats_bank
-
 	  ];
 
 	  $dbclassupdateprep = [];
 
-  	  	
-
 	  foreach($input as $k => $v ) {
-
 		$dbclassupdatesql[] = $k.'=:'.$k;
-
 		$dbclassupdateprep[':'.$k] = $v;
-
 	  }
 
-	  
-
 	$dbclassupdateprep[":an"] = $an;
+
+    // // === 除錯 SQL ===
+    // echo "<h3>SQL 除錯資訊</h3>";
+    // echo "<p><strong>SQL 語句：</strong><br>";
+    // echo 'UPDATE servers SET '.implode(",", $dbclassupdatesql).' WHERE auton=:an';
+    // echo "</p>";
+    // echo "<p><strong>參數值：</strong></p>";
+    // echo "<pre>";
+    // print_r($dbclassupdateprep);
+    // echo "</pre>";
+    // echo "<p><strong>伺服器ID：</strong> " . $an . "</p>";
+    // echo "<p><strong>pay_bank：</strong> " . _r("pay_bank") . "</p>";
+    // echo "<p><strong>gstats_bank：</strong> " . _r("gstats_bank") . "</p>";
+    // die("=== SQL 除錯結束 ===");
 
     $query = $pdo->prepare('UPDATE servers SET '.implode(",", $dbclassupdatesql).' where auton=:an');    
 
@@ -697,12 +576,7 @@ if(_r("st") == 'addsave') {
     die();
 
 	}
-
-	
-
 }
-
-
 
 if(!empty($an = _r("an"))) {
 
@@ -729,7 +603,7 @@ if(!empty($an = _r("an"))) {
         
         // 記錄第一個找到的金流服務作為預設選擇
         if(empty($first_payment_type)) {
-            $first_payment_type = $payment_type;
+            // $first_payment_type = $payment_type;
         }
         
         $bank_funds_js[$payment_type] = [
@@ -741,7 +615,7 @@ if(!empty($an = _r("an"))) {
     }
     
     // 設定預設的金流服務選擇
-    $datalist['pay_bank'] = $first_payment_type;
+    // $datalist['pay_bank'] = $first_payment_type;
     
     // 如果有找到第一個金流服務，載入其資料到表單欄位
     if(!empty($first_payment_type) && isset($bank_funds_js[$first_payment_type])) {
@@ -766,7 +640,7 @@ if(!empty($an = _r("an"))) {
                 $datalist['smilepay_key_bank'] = $first_fund['verify_key'];
                 break;
                 
-            case 'szfupay':
+            case 'szfu':
                 $datalist['szfupay_shop_id_bank'] = $first_fund['merchant_id'];
                 $datalist['szfupay_key_bank'] = $first_fund['verify_key'];
                 break;
@@ -825,6 +699,9 @@ top_html();
 
 <link rel="stylesheet" href="assets/css/jquery.fileupload-ui.css">
 
+<!-- FontAwesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
 <noscript><link rel="stylesheet" href="assets/css/jquery.fileupload-noscript.css"></noscript>
 
 <noscript><link rel="stylesheet" href="assets/css/jquery.fileupload-ui-noscript.css"></noscript>
@@ -839,14 +716,9 @@ top_html();
 
 				<div id="content" class="dashboard padding-20">
 
-
-
 					<!-- 
-
 						PANEL CLASSES:
-
 							panel-default
-
 							panel-danger
 
 							panel-warning
@@ -999,70 +871,68 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 
 <tr><td style="background:#6666ff;color:white;text-align:center;">金流設定</td></tr>
 
-<tr><td>信用卡金流服務：
+<tr><td>銀行轉帳金流服務：<input type="radio" name="pay_bank" value="ecpay"<?if($datalist['pay_bank'] == 'ecpay') echo " checked"?>> 綠界 &nbsp;&nbsp;
 
-	<input type="radio" name="pay_cp" value="pchome"<?if($datalist['pay_cp'] == 'pchome') echo " checked"?>> 支付連&nbsp;&nbsp;
+	<input type="radio" name="pay_bank" value="ebpay"<?if($datalist['pay_bank'] == 'ebpay') echo " checked"?>> 藍新&nbsp;&nbsp;
 
-	<input type="radio" name="pay_cp" value="ecpay"<?if($datalist['pay_cp'] == 'ecpay') echo " checked"?>> 綠界&nbsp;&nbsp;
+	<input type="radio" name="pay_bank" value="gomypay"<?if($datalist['pay_bank'] == 'gomypay') echo " checked"?>> 萬事達&nbsp;&nbsp;
 
-	<!-- <input type="radio" name="pay_cp" value="ebpay"<?if($datalist['pay_cp'] == 'ebpay') echo " checked"?>> 藍新&nbsp;&nbsp; -->
+	<input type="radio" name="pay_bank" value="smilepay"<?if($datalist['pay_bank'] == 'smilepay') echo " checked"?>> 速買配&nbsp;&nbsp;
 
-	<input type="radio" name="pay_cp" value="gomypay"<?if($datalist['pay_cp'] == 'gomypay') echo " checked"?>> 萬事達&nbsp;&nbsp;
+	<input type="radio" name="pay_bank" value="funpoint"<?if($datalist['pay_bank'] == 'funpoint') echo " checked"?>> 歐買尬&nbsp;&nbsp;
 
-	<!-- <input type="radio" name="pay_cp" value="smilepay"<?if($datalist['pay_cp'] == 'smilepay') echo " checked"?>> 速買配&nbsp;&nbsp; -->
+	<input type="radio" name="pay_bank" value="szfu"<?if($datalist['pay_bank'] == 'szfu') echo " checked"?>> 數支付&nbsp;&nbsp;
 
-	<input type="radio" name="pay_cp" value="funpoint"<?if($datalist['pay_cp'] == 'funpoint') echo " checked"?>> 歐買尬
-
-	<input type="radio" name="pay_cp" value="no"<?if($datalist['pay_cp'] == 'no') echo " checked"?>> 無
-</td></tr>
-
-<tr><td class="normaldiv">
-
-特店編號：<input name="MerchantID" id="MerchantID" type="text" value="<?=$datalist['MerchantID']?>">&nbsp;&nbsp;
-
-介接 HashKey：<input name="HashKey" id="HashKey" type="text" value="<?=$datalist['HashKey']?>">&nbsp;&nbsp;
-
-介接 HashIV：<input name="HashIV" id="HashIV" type="text" value="<?=$datalist['HashIV']?>">&nbsp;&nbsp;
+	<input type="radio" name="pay_bank" value="no"<?if($datalist['pay_bank'] == 'no') echo " checked"?>> 無
 
 </td></tr>
 
-<tr><td class="pchomediv">
+<tr><td class="normaldiv_bank">
 
-支付連 APP_ID：<input name="pchome_app_id" id="pchome_app_id" type="text" value="<?=$datalist['pchome_app_id']?>">&nbsp;&nbsp;
+特店編號：<input name="MerchantID_bank" id="MerchantID_bank" type="text" value="<?=$datalist['MerchantID_bank']?>">&nbsp;&nbsp;
 
-支付連 SECRET_CODE：<input name="pchome_secret_code" id="pchome_secret_code" type="text" value="<?=$datalist['pchome_secret_code']?>">
+介接 HashKey：<input name="HashKey_bank" id="HashKey_bank" type="text" value="<?=$datalist['HashKey_bank']?>">&nbsp;&nbsp;
 
-</td></tr>
-
-<tr><td class="gomypaydiv">
-
-	Gomypay 商店代號：<input name="gomypay_shop_id" id="gomypay_shop_id" type="text" value="<?=$datalist['gomypay_shop_id']?>">&nbsp;&nbsp;
-
-    Gomypay 交易驗證碼：<input name="gomypay_key" id="gomypay_key" type="text" value="<?=$datalist['gomypay_key']?>">
+介接 HashIV：<input name="HashIV_bank" id="HashIV_bank" type="text" value="<?=$datalist['HashIV_bank']?>">&nbsp;&nbsp;
 
 </td></tr>
 
-<tr><td class="smilepaydiv">
+<tr><td class="pchomediv_bank">
 
-    速買配 商家代號：<input name="smilepay_shop_id" id="smilepay_shop_id" type="text" value="<?=$datalist['smilepay_shop_id']?>">&nbsp;&nbsp;
+支付連 APP_ID：<input name="pchome_app_id_bank" id="pchome_app_id_bank" type="text" value="<?=$datalist['pchome_app_id_bank']?>">&nbsp;&nbsp;
 
-    速買配 檢查碼 Verify_key：<input name="smilepay_key" id="smilepay_key" type="text" value="<?=$datalist['smilepay_key']?>">
+支付連 SECRET_CODE：<input name="pchome_secret_code_bank" id="pchome_secret_code_bank" type="text" value="<?=$datalist['pchome_secret_code_bank']?>">
 
 </td></tr>
 
-<tr><td class="nodiv">
-	<label style="color:red; font-weight:800; ">注意：尚未選擇信用卡金流</label>
+<tr><td class="gomypaydiv_bank">
+
+	Gomypay 商店代號：<input name="gomypay_shop_id_bank" id="gomypay_shop_id_bank" type="text" value="<?=$datalist['gomypay_shop_id_bank']?>">&nbsp;&nbsp;
+
+    Gomypay 交易驗證碼：<input name="gomypay_key_bank" id="gomypay_key_bank" type="text" value="<?=$datalist['gomypay_key_bank']?>">
+
+</td></tr>
+
+<tr><td class="smilepaydiv_bank">
+
+    速買配 商家代號：<input name="smilepay_shop_id_bank" id="smilepay_shop_id_bank" type="text" value="<?=$datalist['smilepay_shop_id_bank']?>">&nbsp;&nbsp;
+
+    速買配 檢查碼 Verify_key：<input name="smilepay_key_bank" id="smilepay_key_bank" type="text" value="<?=$datalist['smilepay_key_bank']?>">
+
+</td></tr>
+
+<tr><td class="szfupaydiv_bank">
+
+數支付 HashId：<input name="szfupay_key_bank" id="szfupay_key_bank" type="text" value="<?=$datalist['szfupay_key_bank']?>">&nbsp;&nbsp;
+
+數支付 HashKey：<input name="szfupay_shop_id_bank" id="szfupay_shop_id_bank" type="text" value="<?=$datalist['szfupay_shop_id_bank']?>">&nbsp;&nbsp;
+
 </td></tr>
 
 <tr><td>
-
-    信用卡環境：<input type="radio" name="gstats" value="1"<?if($gstats == 1) echo " checked"?>> 正式環境 &nbsp;&nbsp;
-
-               <input type="radio" name="gstats" value="0"<?if($gstats != 1) echo " checked"?>> 模擬環境
-
+    銀行轉帳金流環境：<input type="radio" name="gstats_bank" value="1"<?if($gstats_bank == 1) echo " checked"?>> 正式環境 &nbsp;&nbsp;
+               <input type="radio" name="gstats_bank" value="0"<?if($gstats_bank != 1) echo " checked"?>> 模擬環境
 </td></tr>
-
-
 
 <tr style="background-color: #D2E9FF"><td>超商金流服務：<input type="radio" name="pay_cp2" value="ecpay"<?if($datalist['pay_cp2'] == 'ecpay') echo " checked"?>> 綠界 &nbsp;&nbsp;
 
@@ -1127,67 +997,67 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
                <input type="radio" name="gstats2" value="0"<?if($gstats2 != 1) echo " checked"?>> 模擬環境
 </td></tr>
 
-<tr><td>銀行轉帳金流服務<?=$datalist['pay_bank'];?>：<input type="radio" name="pay_bank" value="ecpay"<?if($datalist['pay_bank'] == 'ecpay') echo " checked"?>> 綠界 &nbsp;&nbsp;
+<tr><td>信用卡金流服務：
 
-	<input type="radio" name="pay_bank" value="ebpay"<?if($datalist['pay_bank'] == 'ebpay') echo " checked"?>> 藍新&nbsp;&nbsp;
+	<input type="radio" name="pay_cp" value="pchome"<?if($datalist['pay_cp'] == 'pchome') echo " checked"?>> 支付連&nbsp;&nbsp;
 
-	<input type="radio" name="pay_bank" value="gomypay"<?if($datalist['pay_bank'] == 'gomypay') echo " checked"?>> 萬事達&nbsp;&nbsp;
+	<input type="radio" name="pay_cp" value="ecpay"<?if($datalist['pay_cp'] == 'ecpay') echo " checked"?>> 綠界&nbsp;&nbsp;
 
-	<input type="radio" name="pay_bank" value="smilepay"<?if($datalist['pay_bank'] == 'smilepay') echo " checked"?>> 速買配&nbsp;&nbsp;
+	<!-- <input type="radio" name="pay_cp" value="ebpay"<?if($datalist['pay_cp'] == 'ebpay') echo " checked"?>> 藍新&nbsp;&nbsp; -->
 
-	<input type="radio" name="pay_bank" value="funpoint"<?if($datalist['pay_bank'] == 'funpoint') echo " checked"?>> 歐買尬&nbsp;&nbsp;
+	<input type="radio" name="pay_cp" value="gomypay"<?if($datalist['pay_cp'] == 'gomypay') echo " checked"?>> 萬事達&nbsp;&nbsp;
 
-	<input type="radio" name="pay_bank" value="szfu"<?if($datalist['pay_bank'] == 'szfu') echo " checked"?>> 數支付&nbsp;&nbsp;
+	<!-- <input type="radio" name="pay_cp" value="smilepay"<?if($datalist['pay_cp'] == 'smilepay') echo " checked"?>> 速買配&nbsp;&nbsp; -->
 
-	<input type="radio" name="pay_bank" value="no"<?if($datalist['pay_bank'] == 'no') echo " checked"?>> 無
+	<input type="radio" name="pay_cp" value="funpoint"<?if($datalist['pay_cp'] == 'funpoint') echo " checked"?>> 歐買尬
+
+	<input type="radio" name="pay_cp" value="no"<?if($datalist['pay_cp'] == 'no') echo " checked"?>> 無
+</td></tr>
+
+<tr><td class="normaldiv">
+
+特店編號：<input name="MerchantID" id="MerchantID" type="text" value="<?=$datalist['MerchantID']?>">&nbsp;&nbsp;
+
+介接 HashKey：<input name="HashKey" id="HashKey" type="text" value="<?=$datalist['HashKey']?>">&nbsp;&nbsp;
+
+介接 HashIV：<input name="HashIV" id="HashIV" type="text" value="<?=$datalist['HashIV']?>">&nbsp;&nbsp;
 
 </td></tr>
 
-<tr><td class="normaldiv_bank">
+<tr><td class="pchomediv">
 
-特店編號：<input name="MerchantID_bank" id="MerchantID_bank" type="text" value="<?=$datalist['MerchantID_bank']?>">&nbsp;&nbsp;
+支付連 APP_ID：<input name="pchome_app_id" id="pchome_app_id" type="text" value="<?=$datalist['pchome_app_id']?>">&nbsp;&nbsp;
 
-介接 HashKey：<input name="HashKey_bank" id="HashKey_bank" type="text" value="<?=$datalist['HashKey_bank']?>">&nbsp;&nbsp;
-
-介接 HashIV：<input name="HashIV_bank" id="HashIV_bank" type="text" value="<?=$datalist['HashIV_bank']?>">&nbsp;&nbsp;
+支付連 SECRET_CODE：<input name="pchome_secret_code" id="pchome_secret_code" type="text" value="<?=$datalist['pchome_secret_code']?>">
 
 </td></tr>
 
-<tr><td class="pchomediv_bank">
+<tr><td class="gomypaydiv">
 
-支付連 APP_ID：<input name="pchome_app_id_bank" id="pchome_app_id_bank" type="text" value="<?=$datalist['pchome_app_id_bank']?>">&nbsp;&nbsp;
+	Gomypay 商店代號：<input name="gomypay_shop_id" id="gomypay_shop_id" type="text" value="<?=$datalist['gomypay_shop_id']?>">&nbsp;&nbsp;
 
-支付連 SECRET_CODE：<input name="pchome_secret_code_bank" id="pchome_secret_code_bank" type="text" value="<?=$datalist['pchome_secret_code_bank']?>">
-
-</td></tr>
-
-<tr><td class="gomypaydiv_bank">
-
-	Gomypay 商店代號：<input name="gomypay_shop_id_bank" id="gomypay_shop_id_bank" type="text" value="<?=$datalist['gomypay_shop_id_bank']?>">&nbsp;&nbsp;
-
-    Gomypay 交易驗證碼：<input name="gomypay_key_bank" id="gomypay_key_bank" type="text" value="<?=$datalist['gomypay_key_bank']?>">
+    Gomypay 交易驗證碼：<input name="gomypay_key" id="gomypay_key" type="text" value="<?=$datalist['gomypay_key']?>">
 
 </td></tr>
 
-<tr><td class="smilepaydiv_bank">
+<tr><td class="smilepaydiv">
 
-    速買配 商家代號：<input name="smilepay_shop_id_bank" id="smilepay_shop_id_bank" type="text" value="<?=$datalist['smilepay_shop_id_bank']?>">&nbsp;&nbsp;
+    速買配 商家代號：<input name="smilepay_shop_id" id="smilepay_shop_id" type="text" value="<?=$datalist['smilepay_shop_id']?>">&nbsp;&nbsp;
 
-    速買配 檢查碼 Verify_key：<input name="smilepay_key_bank" id="smilepay_key_bank" type="text" value="<?=$datalist['smilepay_key_bank']?>">
+    速買配 檢查碼 Verify_key：<input name="smilepay_key" id="smilepay_key" type="text" value="<?=$datalist['smilepay_key']?>">
 
 </td></tr>
 
-<tr><td class="szfupaydiv_bank">
-
-數支付 HashId：<input name="szfupay_key_bank" id="szfupay_key_bank" type="text" value="<?=$datalist['szfupay_key_bank']?>">&nbsp;&nbsp;
-
-數支付 HashKey：<input name="szfupay_shop_id_bank" id="szfupay_shop_id_bank" type="text" value="<?=$datalist['szfupay_shop_id_bank']?>">&nbsp;&nbsp;
-
+<tr><td class="nodiv">
+	<label style="color:red; font-weight:800; ">注意：尚未選擇信用卡金流</label>
 </td></tr>
 
 <tr><td>
-    銀行轉帳金流環境：<input type="radio" name="gstats_bank" value="1"<?if($gstats_bank == 1) echo " checked"?>> 正式環境 &nbsp;&nbsp;
-               <input type="radio" name="gstats_bank" value="0"<?if($gstats_bank != 1) echo " checked"?>> 模擬環境
+
+    信用卡環境：<input type="radio" name="gstats" value="1"<?if($gstats == 1) echo " checked"?>> 正式環境 &nbsp;&nbsp;
+
+               <input type="radio" name="gstats" value="0"<?if($gstats != 1) echo " checked"?>> 模擬環境
+
 </td></tr>
 
 <tr style="background-color: #D2E9FF">
@@ -1201,6 +1071,171 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 		<input type="number" name="max_bank" id="max_bank" value="<?=$datalist['max_bank'] == 0 ? '' : $datalist['max_bank']?>">
 	</td>
 </tr>
+
+<tr><td style="background:#6666ff;color:white;text-align:center;">
+    <i class="fas fa-cog" style="margin-right: 8px;"></i>派獎設定
+</td></tr>
+<tr><td>
+    資料表名稱：<input name="table_name" id="table_name" type="text" value="<?=$datalist['table_name']?>">&nbsp;&nbsp;
+    帳號欄位：<input name="account_field" id="account_field" type="text" value="<?=$datalist['account_field']?>">
+</td></tr>
+<tr><td>
+    <button type="button" onclick="addField()" style="background-color: #28a745; color: white; border: none; padding: 8px 15px; cursor: pointer; margin-bottom: 10px;">新增欄位</button>
+    <div id="dynamic_fields_container" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background-color: #fafafa;">
+        <div id="dynamic_fields">
+            <div class="field_pair" id="field_pair_1" style="margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;">
+                <div style="display: inline-block; margin-right: 15px;">
+                    欄位名稱：<input name="field_names[]" type="text" value="" style="width: 150px;">
+                </div>
+                <div style="display: inline-block; margin-right: 15px;">
+                    欄位資料：<input name="field_values[]" type="text" value="" style="width: 200px;">
+                </div>
+                <button type="button" class="delete_field" onclick="removeField(1)" disabled style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer;">刪除</button>
+            </div>
+        </div>
+    </div>
+</td></tr>
+
+<script>
+let fieldCounter = 1;
+
+function addField() {
+    fieldCounter++;
+    const dynamicFields = document.getElementById('dynamic_fields');
+    const newField = document.createElement('div');
+    newField.className = 'field_pair';
+    newField.id = 'field_pair_' + fieldCounter;
+    newField.style.cssText = 'margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;';
+    newField.innerHTML = `
+        <div style="display: inline-block; margin-right: 15px;">
+            欄位名稱：<input name="field_names[]" type="text" value="" style="width: 150px;">
+        </div>
+        <div style="display: inline-block; margin-right: 15px;">
+            欄位資料：<input name="field_values[]" type="text" value="" style="width: 200px;">
+        </div>
+        <button type="button" class="delete_field" onclick="removeField(${fieldCounter})" style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer;">刪除</button>
+    `;
+    dynamicFields.appendChild(newField);
+    updateDeleteButtons();
+    updateScrollContainer();
+    
+    // 滾動到最新添加的欄位
+    const container = document.getElementById('dynamic_fields_container');
+    container.scrollTop = container.scrollHeight;
+}
+
+function removeField(id) {
+    const fieldPairs = document.querySelectorAll('.field_pair');
+    if (fieldPairs.length > 1) {
+        document.getElementById('field_pair_' + id).remove();
+        updateDeleteButtons();
+        updateScrollContainer();
+    }
+}
+
+function updateDeleteButtons() {
+    const fieldPairs = document.querySelectorAll('.field_pair');
+    const deleteButtons = document.querySelectorAll('.delete_field');
+    
+    deleteButtons.forEach(button => {
+        button.disabled = fieldPairs.length <= 1;
+        if (button.disabled) {
+            button.style.backgroundColor = '#6c757d';
+            button.style.cursor = 'not-allowed';
+        } else {
+            button.style.backgroundColor = '#dc3545';
+            button.style.cursor = 'pointer';
+        }
+    });
+}
+
+function updateScrollContainer() {
+    const fieldPairs = document.querySelectorAll('.field_pair');
+    const container = document.getElementById('dynamic_fields_container');
+    
+    // 計算每個欄位組的大概高度 (約65px包含margin和padding)
+    const estimatedHeight = fieldPairs.length * 65;
+    const maxHeightFor5Items = 5 * 65; // 約325px
+    
+    if (fieldPairs.length > 5) {
+        container.style.maxHeight = maxHeightFor5Items + 'px';
+        container.style.overflowY = 'auto';
+    } else {
+        container.style.maxHeight = 'none';
+        container.style.overflowY = 'visible';
+    }
+}
+
+// 頁面載入時初始化
+document.addEventListener('DOMContentLoaded', function() {
+    updateScrollContainer();
+    
+    // 綁定表單提交事件
+    const form = document.forms['form1'];
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            // 取得伺服器ID
+            const serverIdElement = document.getElementById('an');
+            if (serverIdElement && serverIdElement.value) {
+                // 同步提交動態欄位資料到API
+                submitDynamicFields(serverIdElement.value);
+            }
+        });
+    }
+});
+
+// 表單提交時同時送出動態欄位資料到API
+function submitDynamicFields(serverId) {
+    const tableNameElement = document.getElementById('table_name');
+    const accountFieldElement = document.getElementById('account_field');
+    const fieldPairs = document.querySelectorAll('.field_pair');
+    
+    if (!tableNameElement || !accountFieldElement) {
+        console.error('找不到必要的欄位元素');
+        return;
+    }
+    
+    const data = {
+        action: 'save',
+        server_id: serverId,
+        table_name: tableNameElement.value,
+        account_field: accountFieldElement.value,
+        dynamic_fields: []
+    };
+    
+    fieldPairs.forEach(pair => {
+        const nameInput = pair.querySelector('input[name="field_names[]"]');
+        const valueInput = pair.querySelector('input[name="field_values[]"]');
+        
+        if (nameInput && valueInput && nameInput.value.trim() !== '') {
+            data.dynamic_fields.push({
+                field_name: nameInput.value.trim(),
+                field_value: valueInput.value.trim()
+            });
+        }
+    });
+    
+    // 發送到動態欄位API
+    fetch('dynamic_fields_api.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            console.log('動態欄位資料同步成功:', result);
+        } else {
+            console.error('動態欄位資料同步失敗:', result.message);
+        }
+    })
+    .catch(error => {
+        console.error('API呼叫錯誤:', error);
+    });
+}
+</script>
 
   </tbody>
 
@@ -1274,25 +1309,17 @@ $(function() {
 
 	pay_check();
 
-
-
 	$("input[name=pay_cp2]").on("change", function() {
-
 		pay_check2();
-
 	});
 
 	pay_check2();
 
 	$("input[name=pay_bank]").on("change", function() {
-
 		pay_check_bank();
-
 	});
 
 	pay_check_bank();
-
-
 
 	loadcustombgdiv();
 

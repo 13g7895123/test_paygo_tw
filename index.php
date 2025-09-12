@@ -205,6 +205,11 @@ if ($_REQUEST["st"] == "send") {
 		$pay_cp_check = $pay_cp2;
 	}
 
+	// 銀行轉帳判定
+	if ($pt == 2) {
+		$pay_cp_check = $pay_bank;
+	}
+
 	if ($bb == 0) $bb = 1;
 	$bmoney = $bb * $money;
 
@@ -444,7 +449,7 @@ $enable_fingerprint_check = false;
 											echo '<option value="30">超商代碼(上限20000)全家</option>
 												<option value="31">超商代碼(上限20000)7-11</option>
 												<option value="32">超商代碼(上限20000)萊爾富</option>';
-										} else {
+										} else if ($datalist["pay_cp2"] != "no"){
 											// 限制不顯示的超商
 											$noShop = array('破界仙境', '浪流連天堂', '最終之戰', '時空裂痕', '初樂天堂','希望');
 											if (!in_array($datalist["names"], $noShop)) {
@@ -452,7 +457,11 @@ $enable_fingerprint_check = false;
 											}
 										}
 										?>
-										<option value="2">銀行轉帳</option>
+										<?php
+										if ($datalist["pay_bank"] != "no") {
+											echo '<option value="2">銀行轉帳</option>';
+										}
+										?>
 										<?php
 										if ($datalist["pay_cp"] != "no") {
 											echo '<option value="5">信用卡</option>';
@@ -629,6 +638,14 @@ $enable_fingerprint_check = false;
 				if (selectVal != '' && inputVal != '') {
 					$("#money").val('');
 					$('#money2').val('');
+				}
+			});
+
+			// 驗證碼輸入框按Enter鍵送出
+			$("#psn").on("keypress", function(e) {
+				if (e.which == 13) {  // Enter鍵的鍵碼是13
+					e.preventDefault();
+					$("#submit_btn").click();
 				}
 			});
 

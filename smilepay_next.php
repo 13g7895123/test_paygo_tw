@@ -2,6 +2,7 @@
 
     include("myadm/include.php");
 	include_once('./web_class.php');
+	include_once('./pay_bank.php');
 
 	if($_SESSION["foran"] == "") alert("伺服器資料錯誤-8000201。", 0);
 	if($_SESSION["serverid"] == "") alert("伺服器資料錯誤-8000202。", 0);
@@ -16,6 +17,7 @@
 		if($datalist["stats"] != 0) alert("金流狀態有誤-8000208。", 0);
 
 		$paytype = $datalist["paytype"];
+		$is_bank = $datalist["is_bank"];
 
 		$sq = $pdo->prepare("SELECT * FROM servers where auton=?");
 		$sq->execute(array($_SESSION["foran"]));
@@ -31,8 +33,20 @@
 			} else {
 				$gurl = "https://ssl.smse.com.tw/ezpos_test/mtmk_utf.asp";
 			}
+
 			$Dcvc = $sqd["smilepay_shop_id"];
-			$Str_Check = $sqd["smilepay_key2"];
+			$Str_Check = $sqd["smilepay_key2"];			
+		}else if ($paytype == 2){
+			// 使用新的 bank_funds 資料表取得 smilepay 銀行轉帳設定
+			$payment_info = getSpecificBankPaymentInfo($pdo, $_SESSION["lastan"], 'smilepay');
+			if ($payment_info && isset($payment_info['payment_config'])) {
+				$Dcvc = $payment_info['payment_config']['merchant_id'];
+				$Str_Check = $payment_info['payment_config']['verify_key'];
+			}
+
+			$gurl = ($gstats_bank == 1) 
+			? "https://ssl.smse.com.tw/api/SPPayment.asp"   // 正式
+			: "https://ssl.smse.com.tw/ezpos_test/mtmk_utf.asp"; // 模擬
 		} else {
 			if ($gstats2 == 1) {
 				// $gurl = "https://ssl.smse.com.tw/ezpos/mtmk_utf.asp";
