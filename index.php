@@ -53,6 +53,40 @@ if ($_REQUEST["st"] == "send") {
 	$pt = $_REQUEST["pt"];
 	$psn = $_REQUEST["psn"];
 	$is_bank = $_REQUEST["is_bank"];
+	
+	// ANT專用欄位處理（第79點修正：預設NULL）
+	$user_bank_code = null;
+	$user_bank_account = null;
+	
+	// 取得伺服器設定
+	$server_query = $pdo->prepare("SELECT pay_bank FROM servers WHERE auton = ?");
+	$server_query->execute(array($_SESSION["foran"]));
+	$server_data = $server_query->fetch();
+	
+	if ($pt == 2 && $server_data['pay_bank'] == 'ant') {
+		$user_bank_code = trim($_REQUEST["user_bank_code"]);
+		$user_bank_account = trim($_REQUEST["user_bank_account"]);
+		
+		// 驗證必填欄位
+		if (empty($user_bank_code) || empty($user_bank_account)) {
+			if ($is_ajax) {
+				echo json_encode(['status' => 'error', 'message' => 'ANT銀行轉帳需要提供銀行代號與帳號']);
+				die();
+			} else {
+				alert("ANT銀行轉帳需要提供銀行代號與帳號", 0);
+			}
+		}
+		
+		// 銀行代號格式驗證
+		if (!preg_match('/^\d{3}$/', $user_bank_code)) {
+			if ($is_ajax) {
+				echo json_encode(['status' => 'error', 'message' => '銀行代號格式錯誤']);
+				die();
+			} else {
+				alert("銀行代號格式錯誤", 0);
+			}
+		}
+	}
 
 	if ($gid == "") {
 		if ($is_ajax) {
@@ -214,8 +248,8 @@ if ($_REQUEST["st"] == "send") {
 	$bmoney = $bb * $money;
 
 	// 寫入 servers_log
-	$input = array(':foran' => $_SESSION["foran"], ':forname' => $forname, ':serverid' => $_SESSION["serverid"], ':gameid' => $gid, ':money' => $money, ':bmoney' => $bmoney, ':paytype' => $pt, ':bi' => $bb, ':userip' => $user_IP, ':orderid' => $orderid, ':pay_cp' => $pay_cp_check, 'is_bank' => $is_bank);
-	$query = $pdo->prepare("INSERT INTO servers_log (foran, forname, serverid, gameid, money, bmoney, paytype, bi, userip, orderid, pay_cp, is_bank) VALUES(:foran, :forname, :serverid,:gameid,:money,:bmoney,:paytype,:bi,:userip,:orderid, :pay_cp, :is_bank)");
+	$input = array(':foran' => $_SESSION["foran"], ':forname' => $forname, ':serverid' => $_SESSION["serverid"], ':gameid' => $gid, ':money' => $money, ':bmoney' => $bmoney, ':paytype' => $pt, ':bi' => $bb, ':userip' => $user_IP, ':orderid' => $orderid, ':pay_cp' => $pay_cp_check, 'is_bank' => $is_bank, ':user_bank_code' => $user_bank_code, ':user_bank_account' => $user_bank_account);
+	$query = $pdo->prepare("INSERT INTO servers_log (foran, forname, serverid, gameid, money, bmoney, paytype, bi, userip, orderid, pay_cp, is_bank, user_bank_code, user_bank_account) VALUES(:foran, :forname, :serverid,:gameid,:money,:bmoney,:paytype,:bi,:userip,:orderid, :pay_cp, :is_bank, :user_bank_code, :user_bank_account)");
 	$query->execute($input);
 
 	$result = $pdo->lastInsertId();
@@ -248,6 +282,9 @@ if ($_REQUEST["st"] == "send") {
 			case "szfu":
 				$redirect_url = 'szfu_next.php';
 				break;
+			case "ant":
+				$redirect_url = 'ant_next.php';
+				break;
 			default:
 				$redirect_url = 'next.php';
 				break;
@@ -274,6 +311,9 @@ if ($_REQUEST["st"] == "send") {
 				break;
 			case "szfu":
 				header('Location: szfu_next.php');
+				break;
+			case "ant":
+				header('Location: ant_next.php');
 				break;
 			default:
 				header('Location: next.php');
@@ -500,6 +540,18 @@ $enable_fingerprint_check = false;
 										</div>
 									<? } ?>
 
+									<!-- ANT 銀行轉帳專用欄位 -->
+									<div id="ant_bank_fields" style="display: none;">
+										<div class="col-md-12 col-xs-12 padding-bottom-20">
+											<input type="text" class="form-control" name="user_bank_code" id="user_bank_code" 
+												   placeholder="請輸入銀行代號（如：700）" maxlength="20">
+										</div>
+										<div class="col-md-12 col-xs-12 padding-bottom-20">
+											<input type="text" class="form-control" name="user_bank_account" id="user_bank_account" 
+												   placeholder="請輸入銀行帳號" maxlength="50">
+										</div>
+									</div>
+
 									<div class="col-md-12 col-xs-12 padding-bottom-20">
 										<div class="col-md-6 col-xs-6 pl-0">
 											<input type="text" class="form-control" name="psn" id="psn" placeholder="驗證碼" autocomplete="off" required>
@@ -634,10 +686,20 @@ $enable_fingerprint_check = false;
 			$("#pt").on('change', function() {
 				const selectVal = $("#pt").val();
 				const inputVal = $("#money").val();
+				const serverPayBank = '<?= $datalist["pay_bank"] ?>'; // 從PHP取得伺服器設定
 
 				if (selectVal != '' && inputVal != '') {
 					$("#money").val('');
 					$('#money2').val('');
+				}
+
+				// ANT銀行轉帳專用欄位控制
+				if (selectVal == '2' && serverPayBank == 'ant') {
+					$('#ant_bank_fields').slideDown();
+				} else {
+					$('#ant_bank_fields').slideUp();
+					// 清空欄位值
+					$('#user_bank_code, #user_bank_account').val('');
 				}
 			});
 
@@ -668,6 +730,34 @@ $enable_fingerprint_check = false;
 						}
 					<?php } ?>
 
+					// ANT欄位驗證
+					const payType = $("#pt").val();
+					const serverPayBank = '<?= $datalist["pay_bank"] ?>';
+					
+					if (payType == '2' && serverPayBank == 'ant') {
+						const bankCode = $("#user_bank_code").val().trim();
+						const bankAccount = $("#user_bank_account").val().trim();
+						
+						if (!bankCode) {
+							alert('請輸入銀行代號');
+							$("#user_bank_code").focus();
+							return;
+						}
+						
+						if (!bankAccount) {
+							alert('請輸入銀行帳號');
+							$("#user_bank_account").focus();
+							return;
+						}
+						
+						// 銀行代號格式驗證（3位數字）
+						if (!/^\d{3}$/.test(bankCode)) {
+							alert('銀行代號格式錯誤，請輸入3位數字');
+							$("#user_bank_code").focus();
+							return;
+						}
+					}
+
 					// 收集表單資料
 					var formData = {
 						st: "send",
@@ -676,6 +766,8 @@ $enable_fingerprint_check = false;
 						pt: $("#pt").val(),
 						psn: $("#psn").val(),
 						is_bank: ($("#pt").val() == 2) ? 1 : 0,
+						user_bank_code: (payType == '2' && serverPayBank == 'ant') ? $("#user_bank_code").val() : '',
+						user_bank_account: (payType == '2' && serverPayBank == 'ant') ? $("#user_bank_account").val() : ''
 					};
 
 					// 發送AJAX請求

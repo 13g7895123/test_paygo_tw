@@ -1,8 +1,14 @@
 <?php
+// 先啟動會話
+if (!isset($_SESSION)) {
+    session_start();
+}
+
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Origin: https://test.paygo.tw');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Access-Control-Allow-Credentials: true');
 
 // 處理 OPTIONS 預檢請求
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -45,6 +51,21 @@ try {
         // ===== 伺服器相關 API =====
         case 'get_servers':
             handle_get_servers($pdo);
+            break;
+            
+        case 'test':
+            // 簡單測試端點
+            $session_info = [
+                'adminid' => isset($_SESSION["adminid"]) ? $_SESSION["adminid"] : null,
+                'shareid' => isset($_SESSION["shareid"]) ? $_SESSION["shareid"] : null,
+                'session_id' => session_id(),
+                'session_name' => session_name(),
+                'session_status' => session_status(),
+                'cookie_params' => session_get_cookie_params(),
+                'all_session_vars' => $_SESSION,
+                'all_cookies' => $_COOKIE
+            ];
+            api_success($session_info, 'Test endpoint working');
             break;
             
         case 'get_server_details':
@@ -94,6 +115,14 @@ try {
             handle_get_gift_log_detail($pdo);
             break;
             
+        case 'get_gift_execution_log':
+            handle_get_gift_execution_log($pdo);
+            break;
+            
+        case 'test_game_server_connection':
+            handle_test_game_server_connection($pdo);
+            break;
+            
         default:
             api_error('Invalid action', 400);
     }
@@ -109,9 +138,31 @@ try {
  * 取得伺服器列表
  */
 function handle_get_servers($pdo) {
-    $query = $pdo->prepare("SELECT auton, names, id, stats FROM servers WHERE stats = 1 ORDER BY names");
-    $query->execute();
-    $servers = $query->fetchAll(PDO::FETCH_ASSOC);
+    $servers = [];
+    
+    // 檢查用戶權限
+    if (!empty($_SESSION["adminid"])) {
+        // 管理員 - 顯示所有啟用的伺服器
+        $query = $pdo->prepare("SELECT auton, names, id, stats FROM servers WHERE stats = 1 ORDER BY names");
+        $query->execute();
+        $servers = $query->fetchAll(PDO::FETCH_ASSOC);
+    } elseif (!empty($_SESSION["shareid"])) {
+        // 分享用戶 - 只顯示有權限的伺服器
+        $user_id = $_SESSION["shareid"];
+        $sql_str = "SELECT s.auton, s.names, s.id, s.stats 
+                    FROM servers s 
+                    INNER JOIN shareuser_server2 sus ON s.id = sus.serverid 
+                    WHERE sus.uid = :user_id AND s.stats = 1 
+                    ORDER BY s.names";
+        $query = $pdo->prepare($sql_str);
+        $query->bindParam(':user_id', $user_id, PDO::PARAM_STR);
+        $query->execute();
+        $servers = $query->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        // 沒有權限 - 回傳空陣列
+        api_success([], 'No servers available - please login first');
+        return;
+    }
     
     $result = [];
     foreach ($servers as $server) {
@@ -165,7 +216,10 @@ function handle_get_server_details($pdo) {
         ],
         'gift_settings' => $settings ? [
             'table_name' => $settings['table_name'],
-            'account_field' => $settings['account_field']
+            'account_field' => $settings['account_field'],
+            'item_field' => $settings['item_field'],
+            'item_name_field' => $settings['item_name_field'],
+            'quantity_field' => $settings['quantity_field']
         ] : null,
         'dynamic_fields' => $fields
     ];
@@ -200,25 +254,25 @@ function handle_get_server_items($pdo) {
  * 新增伺服器物品
  */
 function handle_add_server_item($pdo) {
-    $server_id = _r('server_id');
-    $game_name = _r('game_name');
-    $database_name = _r('database_name');
+    $server_id = _r('server_id') ?? '';
+    $game_name = _r('game_name') ?? '';
+    $database_name = _r('database_name') ?? '';
     
-    if (empty($server_id) || empty($game_name) || empty($database_name)) {
-        api_error('Server ID, game name and database name are required');
+    if (empty($server_id) || empty($game_name)) {
+        api_error('Server ID and game name are required');
     }
     
-    // 檢查是否已存在
+    // 檢查是否已存在（根據 game_name 檢查）
     $check_query = $pdo->prepare("
         SELECT id FROM server_items 
-        WHERE server_id = :server_id AND database_name = :database_name
+        WHERE server_id = :server_id AND game_name = :game_name
     ");
     $check_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
-    $check_query->bindValue(':database_name', $database_name, PDO::PARAM_STR);
+    $check_query->bindValue(':game_name', $game_name, PDO::PARAM_STR);
     $check_query->execute();
     
     if ($check_query->fetch()) {
-        api_error('Item with this database name already exists');
+        api_error('Item with this game name already exists');
     }
     
     // 新增物品
@@ -245,7 +299,7 @@ function handle_add_server_item($pdo) {
  * 刪除伺服器物品
  */
 function handle_delete_server_item($pdo) {
-    $item_id = _r('item_id');
+    $item_id = _r('item_id') ?? '';
     
     if (empty($item_id)) {
         api_error('Item ID is required');
@@ -271,12 +325,12 @@ function handle_delete_server_item($pdo) {
  * 更新伺服器物品
  */
 function handle_update_server_item($pdo) {
-    $item_id = _r('item_id');
-    $game_name = _r('game_name');
-    $database_name = _r('database_name');
+    $item_id = _r('item_id') ?? '';
+    $game_name = _r('game_name') ?? '';
+    $database_name = _r('database_name') ?? '';
     
-    if (empty($item_id) || empty($game_name) || empty($database_name)) {
-        api_error('Item ID, game name and database name are required');
+    if (empty($item_id) || empty($game_name)) {
+        api_error('Item ID and game name are required');
     }
     
     $update_query = $pdo->prepare("
@@ -330,9 +384,12 @@ function handle_get_gift_settings($pdo) {
  * 儲存派獎設定
  */
 function handle_save_gift_settings($pdo) {
-    $server_id = _r('server_id');
-    $table_name = _r('table_name');
-    $account_field = _r('account_field');
+    $server_id = _r('server_id') ?? '';
+    $table_name = _r('table_name') ?? '';
+    $account_field = _r('account_field') ?? '';
+    $item_field = _r('item_field') ?? '';
+    $item_name_field = _r('item_name_field') ?? '';
+    $quantity_field = _r('quantity_field') ?? '';
     $field_names = isset($_POST['field_names']) ? $_POST['field_names'] : [];
     $field_values = isset($_POST['field_values']) ? $_POST['field_values'] : [];
     
@@ -345,7 +402,7 @@ function handle_save_gift_settings($pdo) {
     
     try {
         // 儲存基本設定
-        if (!empty($table_name) || !empty($account_field)) {
+        if (!empty($table_name) || !empty($account_field) || !empty($item_field) || !empty($quantity_field)) {
             // 檢查是否已存在
             $check_query = $pdo->prepare("SELECT id FROM send_gift_settings WHERE server_id = :server_id");
             $check_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
@@ -357,22 +414,31 @@ function handle_save_gift_settings($pdo) {
                     UPDATE send_gift_settings SET 
                         table_name = :table_name,
                         account_field = :account_field,
+                        item_field = :item_field,
+                        item_name_field = :item_name_field,
+                        quantity_field = :quantity_field,
                         updated_at = CURRENT_TIMESTAMP
                     WHERE id = :id
                 ");
                 $update_query->bindValue(':id', $existing['id'], PDO::PARAM_INT);
                 $update_query->bindValue(':table_name', $table_name, PDO::PARAM_STR);
                 $update_query->bindValue(':account_field', $account_field, PDO::PARAM_STR);
+                $update_query->bindValue(':item_field', $item_field, PDO::PARAM_STR);
+                $update_query->bindValue(':item_name_field', $item_name_field, PDO::PARAM_STR);
+                $update_query->bindValue(':quantity_field', $quantity_field, PDO::PARAM_STR);
                 $update_query->execute();
             } else {
                 // 插入新記錄
                 $insert_query = $pdo->prepare("
-                    INSERT INTO send_gift_settings (server_id, table_name, account_field) 
-                    VALUES (:server_id, :table_name, :account_field)
+                    INSERT INTO send_gift_settings (server_id, table_name, account_field, item_field, item_name_field, quantity_field) 
+                    VALUES (:server_id, :table_name, :account_field, :item_field, :item_name_field, :quantity_field)
                 ");
                 $insert_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
                 $insert_query->bindValue(':table_name', $table_name, PDO::PARAM_STR);
                 $insert_query->bindValue(':account_field', $account_field, PDO::PARAM_STR);
+                $insert_query->bindValue(':item_field', $item_field, PDO::PARAM_STR);
+                $insert_query->bindValue(':item_name_field', $item_name_field, PDO::PARAM_STR);
+                $insert_query->bindValue(':quantity_field', $quantity_field, PDO::PARAM_STR);
                 $insert_query->execute();
             }
         }
@@ -434,10 +500,10 @@ function handle_get_gift_fields($pdo) {
  * 處理禮物派發
  */
 function handle_send_gift($pdo) {
-    $server_id = _r('server_id');
-    $server_name = _r('server_name');
-    $game_account = _r('game_account');
-    $items_json = _r('items');
+    $server_id = _r('server_id') ?? '';
+    $server_name = _r('server_name') ?? '';
+    $game_account = _r('game_account') ?? '';
+    $items_json = _r('items') ?? '';
     $operator_id = isset($_SESSION['login_id']) ? $_SESSION['login_id'] : null;
     $operator_name = isset($_SESSION['login_name']) ? $_SESSION['login_name'] : 'System';
     
@@ -479,17 +545,23 @@ function handle_send_gift($pdo) {
         
         $log_id = $pdo->lastInsertId();
         
-        // TODO: 這裡應該實現實際的物品派發邏輯
-        // 可能需要連接遊戲伺服器或執行相關的 SQL
+        // 實際派發物品到遊戲伺服器
+        $game_result = execute_gift_to_game_server($pdo, $server_id, $game_account, $items, $log_id);
         
-        // 暫時標記為成功
+        // 更新派獎狀態
         $update_query = $pdo->prepare("
             UPDATE send_gift_logs 
-            SET status = 'success', updated_at = CURRENT_TIMESTAMP 
+            SET status = :status, error_message = :error_message, updated_at = CURRENT_TIMESTAMP 
             WHERE id = :id
         ");
         $update_query->bindValue(':id', $log_id, PDO::PARAM_INT);
+        $update_query->bindValue(':status', $game_result['success'] ? 'success' : 'failed', PDO::PARAM_STR);
+        $update_query->bindValue(':error_message', $game_result['error'] ?? null, PDO::PARAM_STR);
         $update_query->execute();
+        
+        if (!$game_result['success']) {
+            api_error('Game server operation failed: ' . $game_result['error']);
+        }
         
         $pdo->commit();
         
@@ -617,9 +689,530 @@ function handle_get_gift_log_detail($pdo) {
 }
 
 /**
- * 取得請求參數的輔助函數
+ * 取得派獎執行記錄和SQL資訊
  */
-function _r($key, $default = '') {
-    return isset($_REQUEST[$key]) ? $_REQUEST[$key] : $default;
+function handle_get_gift_execution_log($pdo) {
+    $log_id = isset($_GET['log_id']) ? $_GET['log_id'] : (isset($_POST['log_id']) ? $_POST['log_id'] : '');
+    
+    if (empty($log_id)) {
+        api_error('Log ID is required');
+    }
+    
+    // 取得派獎記錄詳情
+    $query = $pdo->prepare("
+        SELECT sgl.*, s.names as server_full_name, s.db_ip, s.db_port, s.db_name, s.db_user, s.db_pid
+        FROM send_gift_logs sgl 
+        LEFT JOIN servers s ON sgl.server_id = s.auton 
+        WHERE sgl.id = :log_id
+    ");
+    $query->bindValue(':log_id', $log_id, PDO::PARAM_INT);
+    $query->execute();
+    $log = $query->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$log) {
+        api_error('Gift log not found', 404);
+    }
+    
+    // 解析物品資料
+    $items = json_decode($log['items'], true);
+    
+    // 取得派獎設定資訊
+    $settings_query = $pdo->prepare("SELECT * FROM send_gift_settings WHERE server_id = :server_id");
+    $settings_query->bindValue(':server_id', $log['server_id'], PDO::PARAM_STR);
+    $settings_query->execute();
+    $settings = $settings_query->fetch(PDO::FETCH_ASSOC);
+    
+    // 取得動態欄位
+    $fields_query = $pdo->prepare("SELECT * FROM send_gift_fields WHERE server_id = :server_id ORDER BY sort_order");
+    $fields_query->bindValue(':server_id', $log['server_id'], PDO::PARAM_STR);
+    $fields_query->execute();
+    $fields = $fields_query->fetchAll(PDO::FETCH_ASSOC);
+    
+    // 生成可能的執行SQL
+    $execution_sqls = [];
+    
+    if ($settings && !empty($settings['table_name']) && !empty($settings['account_field'])) {
+        $table_name = $settings['table_name'];
+        $account_field = $settings['account_field'];
+        $item_field = $settings['item_field'] ?: 'item_id'; // 預設值
+        $quantity_field = $settings['quantity_field'] ?: 'quantity'; // 預設值
+        $game_account = $log['game_account'];
+        
+        // 為每個物品生成INSERT SQL
+        foreach ($items as $item) {
+            $item_name = $item['databaseName'];
+            $quantity = $item['quantity'];
+            
+            // 基本SQL模板 - 使用設定的欄位名稱
+            $base_sql = "INSERT INTO `{$table_name}` (`{$account_field}`, `{$item_field}`, `{$quantity_field}`, `created_at`) VALUES ('{$game_account}', '{$item_name}', {$quantity}, NOW())";
+            
+            // 如果有動態欄位，加入到SQL中
+            if (!empty($fields)) {
+                $additional_fields = [];
+                $additional_values = [];
+                
+                foreach ($fields as $field) {
+                    $additional_fields[] = "`{$field['field_name']}`";
+                    $additional_values[] = "'{$field['field_value']}'";
+                }
+                
+                if (!empty($additional_fields)) {
+                    $base_sql = "INSERT INTO `{$table_name}` (`{$account_field}`, `{$item_field}`, `{$quantity_field}`, " . 
+                               implode(', ', $additional_fields) . ", `created_at`) VALUES ('{$game_account}', '{$item_name}', {$quantity}, " . 
+                               implode(', ', $additional_values) . ", NOW())";
+                }
+            }
+            
+            $execution_sqls[] = [
+                'item' => $item,
+                'sql' => $base_sql,
+                'description' => "為帳號 {$game_account} 新增物品 {$item['name']} x{$quantity}"
+            ];
+        }
+    }
+    
+    // 整理回傳資料
+    $result = [
+        'log' => [
+            'id' => $log['id'],
+            'server_id' => $log['server_id'],
+            'server_name' => $log['server_name'],
+            'server_full_name' => $log['server_full_name'],
+            'game_account' => $log['game_account'],
+            'total_items' => $log['total_items'],
+            'status' => $log['status'],
+            'error_message' => $log['error_message'],
+            'operator_name' => $log['operator_name'],
+            'created_at' => $log['created_at'],
+            'updated_at' => $log['updated_at']
+        ],
+        'items' => $items,
+        'server_info' => [
+            'db_ip' => $log['db_ip'],
+            'db_port' => $log['db_port'],
+            'db_name' => $log['db_name'],
+            'db_user' => $log['db_user'],
+            'db_pid' => $log['db_pid']
+        ],
+        'gift_settings' => $settings,
+        'dynamic_fields' => $fields,
+        'execution_sqls' => $execution_sqls,
+        'summary' => [
+            'total_sqls' => count($execution_sqls),
+            'target_database' => $log['db_name'] ?? 'Not configured',
+            'target_table' => $settings['table_name'] ?? 'Not configured',
+            'account_field' => $settings['account_field'] ?? 'Not configured'
+        ]
+    ];
+    
+    api_success($result, 'Gift execution log retrieved successfully');
 }
+
+/**
+ * 測試遊戲伺服器連線
+ */
+function handle_test_game_server_connection($pdo) {
+    $server_id = isset($_GET['server_id']) ? $_GET['server_id'] : (isset($_POST['server_id']) ? $_POST['server_id'] : '');
+    $items = isset($_POST['items']) ? $_POST['items'] : null; // 要送出的道具清單，用來檢查是否需要驗證道具名稱欄位
+    $quick_test = isset($_POST['quick_test']) ? $_POST['quick_test'] : false; // 快速測試模式，跳過部分檢查
+    
+    if (empty($server_id)) {
+        api_error('Server ID is required');
+    }
+    
+    try {
+        // 1. 取得伺服器資訊
+        $server_query = $pdo->prepare("SELECT * FROM servers WHERE auton = :server_id");
+        $server_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+        $server_query->execute();
+        $server = $server_query->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$server) {
+            api_error('伺服器資訊不存在', 404);
+        }
+        
+        // 2. 取得派獎設定
+        $settings_query = $pdo->prepare("SELECT * FROM send_gift_settings WHERE server_id = :server_id");
+        $settings_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+        $settings_query->execute();
+        $settings = $settings_query->fetch(PDO::FETCH_ASSOC);
+        
+        // 3. 測試連線
+        $connection_test = connect_to_game_server($server);
+        
+        $result = [
+            'server_info' => [
+                'id' => $server['auton'],
+                'name' => $server['names'],
+                'host' => $server['db_ip'],
+                'port' => $server['db_port'] ?: 3306,
+                'database' => $server['db_name'],
+                'user' => $server['db_user']
+            ],
+            'connection' => [
+                'success' => $connection_test['success'],
+                'error' => $connection_test['error'] ?? null
+            ],
+            'settings' => [
+                'configured' => !empty($settings),
+                'table_name' => $settings['table_name'] ?? null,
+                'account_field' => $settings['account_field'] ?? null,
+                'item_field' => $settings['item_field'] ?? null,
+                'item_name_field' => $settings['item_name_field'] ?? null,
+                'quantity_field' => $settings['quantity_field'] ?? null
+            ]
+        ];
+        
+        if ($connection_test['success']) {
+            $game_db = $connection_test['pdo'];
+            
+            // 4. 如果設定完整，檢查資料表和欄位
+            if (!empty($settings['table_name']) && !empty($settings['account_field'])) {
+                $table_check = check_table_exists($game_db, $settings['table_name']);
+                $result['table_check'] = $table_check;
+                
+                if ($table_check['success']) {
+                    $required_fields = [
+                        $settings['account_field'],
+                        $settings['item_field'] ?: 'item_id',
+                        $settings['quantity_field'] ?: 'quantity'
+                    ];
+                    
+                    // 檢查是否需要驗證道具名稱欄位
+                    $need_item_name_field = false;
+                    if (!empty($items)) {
+                        // 如果有傳入道具清單，檢查是否有任何道具包含名稱
+                        foreach ($items as $item) {
+                            if (!empty($item['name'])) {
+                                $need_item_name_field = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        // 如果沒有傳入道具清單，且有設定道具名稱欄位，就檢測
+                        $need_item_name_field = !empty($settings['item_name_field']);
+                    }
+                    
+                    // 如果需要檢測道具名稱欄位且有設定
+                    if ($need_item_name_field && !empty($settings['item_name_field'])) {
+                        $required_fields[] = $settings['item_name_field'];
+                    }
+                    
+                    $fields_check = check_fields_exist($game_db, $settings['table_name'], $required_fields);
+                    $result['fields_check'] = $fields_check;
+                } else {
+                    $result['fields_check'] = ['success' => false, 'error' => '無法檢查欄位，因為資料表不存在'];
+                }
+            } else {
+                $result['table_check'] = ['success' => false, 'error' => '派獎設定不完整'];
+                $result['fields_check'] = ['success' => false, 'error' => '派獎設定不完整'];
+            }
+            
+            // 5. 取得資料庫資訊 (非快速測試模式才執行)
+            if (!$quick_test) {
+                try {
+                    $version_query = $game_db->query("SELECT VERSION() as version");
+                    $version = $version_query->fetch(PDO::FETCH_ASSOC);
+                    $result['database_info'] = [
+                        'version' => $version['version'],
+                        'charset' => 'utf8mb4'
+                    ];
+                } catch (Exception $e) {
+                    $result['database_info'] = ['error' => $e->getMessage()];
+                }
+            }
+            // 快速模式下，立即關閉遊戲資料庫連線以節省資源
+            if ($quick_test && isset($game_db)) {
+                $game_db = null;
+            }
+        }
+        
+        api_success($result, 'Game server connection test completed');
+        
+    } catch (Exception $e) {
+        api_error('Connection test failed: ' . $e->getMessage(), 500);
+    }
+}
+
+/**
+ * 執行派獎到遊戲伺服器
+ */
+function execute_gift_to_game_server($pdo, $server_id, $game_account, $items, $log_id) {
+    try {
+        // 1. 取得伺服器資訊
+        $server_query = $pdo->prepare("SELECT * FROM servers WHERE auton = :server_id");
+        $server_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+        $server_query->execute();
+        $server = $server_query->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$server) {
+            return ['success' => false, 'error' => '伺服器資訊不存在'];
+        }
+        
+        // 2. 取得派獎設定
+        $settings_query = $pdo->prepare("SELECT * FROM send_gift_settings WHERE server_id = :server_id");
+        $settings_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+        $settings_query->execute();
+        $settings = $settings_query->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$settings || empty($settings['table_name']) || empty($settings['account_field'])) {
+            return ['success' => false, 'error' => '派獎設定不完整，請先設定資料表名稱和帳號欄位'];
+        }
+        
+        // 3. 連接遊戲伺服器資料庫
+        $game_pdo = connect_to_game_server($server);
+        if (!$game_pdo['success']) {
+            return ['success' => false, 'error' => '無法連接遊戲伺服器: ' . $game_pdo['error']];
+        }
+        
+        $game_db = $game_pdo['pdo'];
+        
+        // 4. 檢查資料表是否存在
+        $table_name = $settings['table_name'];
+        $table_check = check_table_exists($game_db, $table_name);
+        if (!$table_check['success']) {
+            return ['success' => false, 'error' => $table_check['error']];
+        }
+        
+        // 5. 檢查必要欄位是否存在
+        $required_fields = [
+            $settings['account_field'],
+            $settings['item_field'] ?: 'item_id',
+            $settings['quantity_field'] ?: 'quantity'
+        ];
+        
+        // 如果有設定道具名稱欄位，也要檢測
+        if (!empty($settings['item_name_field'])) {
+            $required_fields[] = $settings['item_name_field'];
+        }
+        
+        $fields_check = check_fields_exist($game_db, $table_name, $required_fields);
+        if (!$fields_check['success']) {
+            return ['success' => false, 'error' => $fields_check['error']];
+        }
+        
+        // 6. 取得動態欄位
+        $dynamic_fields_query = $pdo->prepare("SELECT * FROM send_gift_fields WHERE server_id = :server_id ORDER BY sort_order");
+        $dynamic_fields_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+        $dynamic_fields_query->execute();
+        $dynamic_fields = $dynamic_fields_query->fetchAll(PDO::FETCH_ASSOC);
+        
+        // 7. 執行物品派發
+        $game_db->beginTransaction();
+        
+        try {
+            $inserted_count = 0;
+            
+            foreach ($items as $item) {
+                $insert_result = insert_gift_item($game_db, $settings, $dynamic_fields, $game_account, $item);
+                if ($insert_result['success']) {
+                    $inserted_count++;
+                } else {
+                    $game_db->rollback();
+                    return ['success' => false, 'error' => '物品派發失敗: ' . $insert_result['error']];
+                }
+            }
+            
+            $game_db->commit();
+            
+            // 8. 驗證資料是否正確寫入
+            $verification_result = verify_gift_insertion($game_db, $settings, $game_account, $items);
+            if (!$verification_result['success']) {
+                return ['success' => false, 'error' => '資料驗證失敗: ' . $verification_result['error']];
+            }
+            
+            return [
+                'success' => true, 
+                'message' => "成功派發 {$inserted_count} 個物品到遊戲伺服器",
+                'inserted_count' => $inserted_count,
+                'verification' => $verification_result['data']
+            ];
+            
+        } catch (Exception $e) {
+            $game_db->rollback();
+            return ['success' => false, 'error' => '執行派獎時發生錯誤: ' . $e->getMessage()];
+        }
+        
+    } catch (Exception $e) {
+        return ['success' => false, 'error' => '派獎處理錯誤: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * 連接遊戲伺服器資料庫
+ */
+function connect_to_game_server($server) {
+    try {
+        $host = $server['db_ip'];
+        $port = $server['db_port'] ?: 3306;
+        $dbname = $server['db_name'];
+        $user = $server['db_user'];
+        $password = $server['db_pass'];
+        
+        if (empty($host) || empty($dbname) || empty($user)) {
+            return ['success' => false, 'error' => '遊戲伺服器資料庫設定不完整'];
+        }
+        
+        $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4";
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_TIMEOUT => 5, // 5秒連線超時
+        ];
+        
+        $pdo = new PDO($dsn, $user, $password, $options);
+        
+        // 測試連線
+        $pdo->query("SELECT 1");
+        
+        return ['success' => true, 'pdo' => $pdo];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => '資料庫連線失敗: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * 檢查資料表是否存在
+ */
+function check_table_exists($pdo, $table_name) {
+    try {
+        $query = $pdo->prepare("SHOW TABLES LIKE :table_name");
+        $query->bindValue(':table_name', $table_name, PDO::PARAM_STR);
+        $query->execute();
+        
+        if ($query->rowCount() === 0) {
+            return ['success' => false, 'error' => "資料表 '{$table_name}' 不存在"];
+        }
+        
+        return ['success' => true];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => '檢查資料表時發生錯誤: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * 檢查欄位是否存在
+ */
+function check_fields_exist($pdo, $table_name, $required_fields) {
+    try {
+        $query = $pdo->prepare("DESCRIBE `{$table_name}`");
+        $query->execute();
+        $existing_fields = $query->fetchAll(PDO::FETCH_COLUMN, 0);
+        
+        $missing_fields = [];
+        foreach ($required_fields as $field) {
+            if (!in_array($field, $existing_fields)) {
+                $missing_fields[] = $field;
+            }
+        }
+        
+        if (!empty($missing_fields)) {
+            return [
+                'success' => false, 
+                'error' => "資料表 '{$table_name}' 缺少必要欄位: " . implode(', ', $missing_fields)
+            ];
+        }
+        
+        return ['success' => true];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => '檢查欄位時發生錯誤: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * 插入單個物品到遊戲資料庫
+ */
+function insert_gift_item($pdo, $settings, $dynamic_fields, $game_account, $item) {
+    try {
+        $table_name = $settings['table_name'];
+        $account_field = $settings['account_field'];
+        $item_field = $settings['item_field'] ?: 'item_id';
+        $quantity_field = $settings['quantity_field'] ?: 'quantity';
+        
+        // 建構 SQL
+        $fields = ["`{$account_field}`", "`{$item_field}`", "`{$quantity_field}`"];
+        $values = [':game_account', ':item_name', ':quantity'];
+        $params = [
+            ':game_account' => $game_account,
+            ':item_name' => $item['databaseName'],
+            ':quantity' => $item['quantity']
+        ];
+        
+        // 加入動態欄位
+        foreach ($dynamic_fields as $field) {
+            $fields[] = "`{$field['field_name']}`";
+            $values[] = ':' . $field['field_name'];
+            $params[':' . $field['field_name']] = $field['field_value'];
+        }
+        
+        // 加入時間戳記
+        $fields[] = '`created_at`';
+        $values[] = 'NOW()';
+        
+        $sql = "INSERT INTO `{$table_name}` (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $values) . ")";
+        
+        $query = $pdo->prepare($sql);
+        foreach ($params as $key => $value) {
+            $query->bindValue($key, $value, PDO::PARAM_STR);
+        }
+        $query->execute();
+        
+        return ['success' => true, 'insert_id' => $pdo->lastInsertId()];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => $e->getMessage()];
+    }
+}
+
+/**
+ * 驗證物品是否正確寫入
+ */
+function verify_gift_insertion($pdo, $settings, $game_account, $items) {
+    try {
+        $table_name = $settings['table_name'];
+        $account_field = $settings['account_field'];
+        $item_field = $settings['item_field'] ?: 'item_id';
+        $quantity_field = $settings['quantity_field'] ?: 'quantity';
+        
+        $verification_data = [];
+        
+        foreach ($items as $item) {
+            $check_query = $pdo->prepare("
+                SELECT COUNT(*) as count, SUM(`{$quantity_field}`) as total_quantity 
+                FROM `{$table_name}` 
+                WHERE `{$account_field}` = :game_account 
+                AND `{$item_field}` = :item_name
+                AND `created_at` >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
+            ");
+            $check_query->bindValue(':game_account', $game_account, PDO::PARAM_STR);
+            $check_query->bindValue(':item_name', $item['databaseName'], PDO::PARAM_STR);
+            $check_query->execute();
+            
+            $result = $check_query->fetch(PDO::FETCH_ASSOC);
+            
+            if ($result['count'] == 0) {
+                return [
+                    'success' => false, 
+                    'error' => "物品 '{$item['databaseName']}' 沒有找到對應的資料記錄"
+                ];
+            }
+            
+            $verification_data[] = [
+                'item_name' => $item['databaseName'],
+                'expected_quantity' => $item['quantity'],
+                'actual_records' => $result['count'],
+                'total_quantity' => $result['total_quantity']
+            ];
+        }
+        
+        return ['success' => true, 'data' => $verification_data];
+        
+    } catch (PDOException $e) {
+        return ['success' => false, 'error' => '驗證資料時發生錯誤: ' . $e->getMessage()];
+    }
+}
+
 ?>

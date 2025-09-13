@@ -170,4 +170,77 @@ function getCompletePaymentInfo($pdo, $servers_log_auton) {
     return $result;
 }
 
+/**
+ * 取得 ANT 回調記錄
+ * 
+ * @param PDO $pdo 資料庫連線
+ * @param string $order_id 訂單編號 (可選)
+ * @param int $servers_log_id servers_log 的 auton (可選)
+ * @param int $limit 限制筆數 (預設 10)
+ * @return array 回調記錄陣列
+ */
+function getANTCallbackLogs($pdo, $order_id = null, $servers_log_id = null, $limit = 10) {
+    $where_conditions = [];
+    $params = [];
+    
+    if ($order_id) {
+        $where_conditions[] = "acl.order_id = ?";
+        $params[] = $order_id;
+    }
+    
+    if ($servers_log_id) {
+        $where_conditions[] = "acl.servers_log_id = ?";
+        $params[] = $servers_log_id;
+    }
+    
+    $where_sql = "";
+    if (!empty($where_conditions)) {
+        $where_sql = "WHERE " . implode(" AND ", $where_conditions);
+    }
+    
+    $sql = "
+        SELECT acl.*, sl.orderid, sl.gameid, sl.money 
+        FROM ant_callback_logs acl 
+        LEFT JOIN servers_log sl ON acl.servers_log_id = sl.auton 
+        {$where_sql}
+        ORDER BY acl.created_at DESC 
+        LIMIT ?
+    ";
+    
+    $params[] = $limit;
+    
+    try {
+        $query = $pdo->prepare($sql);
+        $query->execute($params);
+        return $query->fetchAll();
+    } catch (Exception $e) {
+        error_log("getANTCallbackLogs Error: " . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * 取得最新的 ANT 回調記錄
+ * 
+ * @param PDO $pdo 資料庫連線
+ * @param string $order_id 訂單編號
+ * @return array|null 最新回調記錄或 null
+ */
+function getLatestANTCallback($pdo, $order_id) {
+    $logs = getANTCallbackLogs($pdo, $order_id, null, 1);
+    return !empty($logs) ? $logs[0] : null;
+}
+
+/**
+ * 檢查 ANT 訂單是否有回調記錄
+ * 
+ * @param PDO $pdo 資料庫連線
+ * @param string $order_id 訂單編號
+ * @return bool 是否有回調記錄
+ */
+function hasANTCallbackLog($pdo, $order_id) {
+    $callback = getLatestANTCallback($pdo, $order_id);
+    return $callback !== null;
+}
+
 ?>

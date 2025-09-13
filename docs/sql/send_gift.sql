@@ -7,6 +7,9 @@ CREATE TABLE send_gift_settings (
     server_id INT NOT NULL COMMENT '伺服器ID (對應servers表的id)',
     table_name VARCHAR(100) NOT NULL COMMENT '資料表名稱',
     account_field VARCHAR(100) NOT NULL COMMENT '帳號欄位名稱',
+    item_field VARCHAR(100) COMMENT '道具編號欄位名稱',
+    item_name_field VARCHAR(100) COMMENT '道具名稱欄位名稱',
+    quantity_field VARCHAR(100) COMMENT '數量欄位名稱',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
     
@@ -35,8 +38,8 @@ CREATE TABLE send_gift_logs (
     server_id INT NOT NULL COMMENT '伺服器ID',
     server_name VARCHAR(100) NOT NULL COMMENT '伺服器名稱',
     game_account VARCHAR(100) NOT NULL COMMENT '遊戲帳號',
-    items JSON NOT NULL COMMENT '物品資訊(JSON格式)',
-    total_items INT DEFAULT 0 COMMENT '物品總數量',
+    items JSON NOT NULL COMMENT '道具資訊(JSON格式)',
+    total_items INT DEFAULT 0 COMMENT '道具總數量',
     status ENUM('pending', 'success', 'failed') DEFAULT 'pending' COMMENT '狀態：pending-等待中, success-成功, failed-失敗',
     error_message TEXT COMMENT '錯誤訊息',
     operator_id INT COMMENT '操作者ID',
@@ -50,13 +53,13 @@ CREATE TABLE send_gift_logs (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='派獎操作記錄表';
 
--- 物品管理資料表
--- 用於存儲各伺服器可用的物品清單
+-- 道具管理資料表
+-- 用於存儲各伺服器可用的道具清單
 CREATE TABLE server_items (
     id INT AUTO_INCREMENT PRIMARY KEY COMMENT '流水號',
     server_id INT NOT NULL COMMENT '伺服器ID (對應servers表的id)',
-    game_name VARCHAR(100) NOT NULL COMMENT '物品遊戲名稱',
-    database_name VARCHAR(100) NOT NULL COMMENT '物品資料庫名稱',
+    game_name VARCHAR(100) NOT NULL COMMENT '道具遊戲名稱',
+    database_name VARCHAR(100) NOT NULL COMMENT '道具資料庫名稱',
     is_active TINYINT(1) DEFAULT 1 COMMENT '是否啟用：1-啟用, 0-停用',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
@@ -65,7 +68,7 @@ CREATE TABLE server_items (
     INDEX idx_database_name (database_name),
     INDEX idx_is_active (is_active),
     UNIQUE KEY unique_server_database (server_id, database_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='伺服器物品管理表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='伺服器道具管理表';
 
 -- 查詢範例SQL
 
@@ -84,7 +87,7 @@ CREATE TABLE server_items (
 -- WHERE s.id = ? 
 -- ORDER BY sgf.sort_order;
 
--- 2. 查詢特定伺服器的物品清單
+-- 2. 查詢特定伺服器的道具清單
 -- SELECT 
 --     si.id,
 --     si.game_name,
@@ -108,3 +111,13 @@ CREATE TABLE server_items (
 -- WHERE sgl.server_id = ?
 -- ORDER BY sgl.created_at DESC
 -- LIMIT 50;
+
+-- ALTER TABLE 語句 - 用於升級現有資料庫
+-- 新增道具編號欄位和數量欄位到派獎設定表
+ALTER TABLE send_gift_settings 
+ADD COLUMN item_field VARCHAR(100) COMMENT '道具編號欄位名稱',
+ADD COLUMN quantity_field VARCHAR(100) COMMENT '數量欄位名稱';
+
+-- 新增道具名稱欄位到派獎設定表
+ALTER TABLE send_gift_settings
+ADD COLUMN item_name_field VARCHAR(100) COMMENT '道具名稱欄位名稱';

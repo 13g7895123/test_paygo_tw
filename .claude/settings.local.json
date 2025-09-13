@@ -3,7 +3,11 @@
     "allow": [
       "WebFetch(domain:test.paygo.tw)",
       "Bash(ls:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(php -l:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:documenter.getpostman.com)",
+      "Bash(php:*)"
     ],
     "deny": [],
     "ask": []

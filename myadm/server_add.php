@@ -150,6 +150,9 @@ function save_gift_settings($pdo, $server_id) {
     // 獲取派獎設定資料
     $table_name = _r("table_name");
     $account_field = _r("account_field");
+    $item_field = _r("item_field");
+    $item_name_field = _r("item_name_field");
+    $quantity_field = _r("quantity_field");
     $field_names = isset($_REQUEST["field_names"]) ? $_REQUEST["field_names"] : array();
     $field_values = isset($_REQUEST["field_values"]) ? $_REQUEST["field_values"] : array();
     
@@ -157,11 +160,14 @@ function save_gift_settings($pdo, $server_id) {
     error_log("save_gift_settings called with server_id: " . $server_id);
     error_log("table_name: " . $table_name);
     error_log("account_field: " . $account_field);
+    error_log("item_field: " . $item_field);
+    error_log("item_name_field: " . $item_name_field);
+    error_log("quantity_field: " . $quantity_field);
     error_log("field_names: " . json_encode($field_names));
     error_log("field_values: " . json_encode($field_values));
     
     // 如果有基本設定資料，處理派獎設定主表
-    if(!empty($table_name) || !empty($account_field)) {
+    if(!empty($table_name) || !empty($account_field) || !empty($item_field) || !empty($item_name_field) || !empty($quantity_field)) {
         // 先檢查是否已存在
         $check_query = $pdo->prepare("SELECT id FROM send_gift_settings WHERE server_id = :server_id");
         $check_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
@@ -173,23 +179,32 @@ function save_gift_settings($pdo, $server_id) {
             $update_query = $pdo->prepare("
                 UPDATE send_gift_settings SET 
                     table_name = :table_name,
-                    account_field = :account_field
+                    account_field = :account_field,
+                    item_field = :item_field,
+                    item_name_field = :item_name_field,
+                    quantity_field = :quantity_field
                 WHERE id = :id
             ");
             $update_query->bindValue(':id', $existing['id'], PDO::PARAM_INT);
             $update_query->bindValue(':table_name', $table_name, PDO::PARAM_STR);
             $update_query->bindValue(':account_field', $account_field, PDO::PARAM_STR);
+            $update_query->bindValue(':item_field', $item_field, PDO::PARAM_STR);
+            $update_query->bindValue(':item_name_field', $item_name_field, PDO::PARAM_STR);
+            $update_query->bindValue(':quantity_field', $quantity_field, PDO::PARAM_STR);
             $update_query->execute();
         } else {
             // 插入新記錄
             error_log("Inserting new gift settings");
             $insert_query = $pdo->prepare("
-                INSERT INTO send_gift_settings (server_id, table_name, account_field) 
-                VALUES (:server_id, :table_name, :account_field)
+                INSERT INTO send_gift_settings (server_id, table_name, account_field, item_field, item_name_field, quantity_field) 
+                VALUES (:server_id, :table_name, :account_field, :item_field, :item_name_field, :quantity_field)
             ");
             $insert_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
             $insert_query->bindValue(':table_name', $table_name, PDO::PARAM_STR);
             $insert_query->bindValue(':account_field', $account_field, PDO::PARAM_STR);
+            $insert_query->bindValue(':item_field', $item_field, PDO::PARAM_STR);
+            $insert_query->bindValue(':item_name_field', $item_name_field, PDO::PARAM_STR);
+            $insert_query->bindValue(':quantity_field', $quantity_field, PDO::PARAM_STR);
             $insert_query->execute();
         }
     }
@@ -339,6 +354,22 @@ function save_bank_funds($pdo, $server_id) {
                 $bank_funds_data[] = [
                     'server_code' => $server_id,
                     'third_party_payment' => 'szfu',
+                    'merchant_id' => $merchant_id,
+                    'hashkey' => null,
+                    'hashiv' => null,
+                    'verify_key' => $verify_key
+                ];
+            }
+            break;
+            
+        case 'ant':
+            $merchant_id = _r("ant_shop_id_bank");
+            $verify_key = _r("ant_key_bank");
+            
+            if(!empty($merchant_id)) {
+                $bank_funds_data[] = [
+                    'server_code' => $server_id,
+                    'third_party_payment' => 'ant',
                     'merchant_id' => $merchant_id,
                     'hashkey' => null,
                     'hashiv' => null,
@@ -705,6 +736,9 @@ if(!empty($an = _r("an"))) {
     if($gift_settings) {
         $datalist['table_name'] = $gift_settings['table_name'];
         $datalist['account_field'] = $gift_settings['account_field'];
+        $datalist['item_field'] = $gift_settings['item_field'];
+        $datalist['item_name_field'] = $gift_settings['item_name_field'];
+        $datalist['quantity_field'] = $gift_settings['quantity_field'];
     }
     
     // 載入動態欄位資料
@@ -742,6 +776,11 @@ if(!empty($an = _r("an"))) {
             case 'szfu':
                 $datalist['szfupay_shop_id_bank'] = $first_fund['merchant_id'];
                 $datalist['szfupay_key_bank'] = $first_fund['verify_key'];
+                break;
+                
+            case 'ant':
+                $datalist['ant_shop_id_bank'] = $first_fund['merchant_id'];
+                $datalist['ant_key_bank'] = $first_fund['verify_key'];
                 break;
                 
             case 'pchome':
@@ -979,6 +1018,8 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 
 	<input type="radio" name="pay_bank" value="szfu"<?if($datalist['pay_bank'] == 'szfu') echo " checked"?>> 數支付&nbsp;&nbsp;
 
+	<input type="radio" name="pay_bank" value="ant"<?if($datalist['pay_bank'] == 'ant') echo " checked"?>> ANT&nbsp;&nbsp;
+
 	<input type="radio" name="pay_bank" value="no"<?if($datalist['pay_bank'] == 'no') echo " checked"?>> 無
 
 </td></tr>
@@ -1022,6 +1063,14 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 數支付 HashId：<input name="szfupay_key_bank" id="szfupay_key_bank" type="text" value="<?=$datalist['szfupay_key_bank']?>">&nbsp;&nbsp;
 
 數支付 HashKey：<input name="szfupay_shop_id_bank" id="szfupay_shop_id_bank" type="text" value="<?=$datalist['szfupay_shop_id_bank']?>">&nbsp;&nbsp;
+
+</td></tr>
+
+<tr><td class="antdiv_bank">
+
+ANT 商店代號：<input name="ant_shop_id_bank" id="ant_shop_id_bank" type="text" value="<?=$datalist['ant_shop_id_bank']?>">&nbsp;&nbsp;
+
+ANT 檢查碼：<input name="ant_key_bank" id="ant_key_bank" type="text" value="<?=$datalist['ant_key_bank']?>">
 
 </td></tr>
 
@@ -1172,6 +1221,9 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 <tr><td>
     資料表名稱：<input name="table_name" id="table_name" type="text" value="<?=$datalist['table_name']?>">&nbsp;&nbsp;
     帳號欄位：<input name="account_field" id="account_field" type="text" value="<?=$datalist['account_field']?>">
+    道具編號：<input name="item_field" id="item_field" type="text" value="<?=$datalist['item_field']?>">&nbsp;&nbsp;
+    道具名稱：<input name="item_name_field" id="item_name_field" type="text" value="<?=$datalist['item_name_field']?>">&nbsp;&nbsp;
+    數量欄位：<input name="quantity_field" id="quantity_field" type="text" value="<?=$datalist['quantity_field']?>">
 </td></tr>
 <tr><td>
     <button type="button" onclick="addField()" style="background-color: #28a745; color: white; border: none; padding: 8px 15px; cursor: pointer; margin-bottom: 10px;">新增欄位</button>
@@ -1612,6 +1664,8 @@ function pay_check_bank() {
   
   $(".szfupaydiv_bank").hide();
   
+  $(".antdiv_bank").hide();
+  
   // 載入對應金流服務的資料
   if (v && v !== 'no' && bankFundsData[v]) {
       var fundData = bankFundsData[v];
@@ -1645,6 +1699,12 @@ function pay_check_bank() {
               $(".szfupaydiv_bank").show();
               break;
               
+          case "ant":
+              $("#ant_shop_id_bank").val(fundData.merchant_id || '');
+              $("#ant_key_bank").val(fundData.verify_key || '');
+              $(".antdiv_bank").show();
+              break;
+              
           case "pchome":
               $("#pchome_app_id_bank").val(fundData.merchant_id || '');
               $("#pchome_secret_code_bank").val(fundData.verify_key || '');
@@ -1670,6 +1730,10 @@ function pay_check_bank() {
               $(".szfupaydiv_bank").show();
               break;
               
+          case "ant":
+              $(".antdiv_bank").show();
+              break;
+              
           case "no":
               // 無需顯示任何額外欄位
               break;
@@ -1692,6 +1756,8 @@ function clearBankFields() {
     $("#smilepay_key_bank").val('');
     $("#szfupay_shop_id_bank").val('');
     $("#szfupay_key_bank").val('');
+    $("#ant_shop_id_bank").val('');
+    $("#ant_key_bank").val('');
     $("#pchome_app_id_bank").val('');
     $("#pchome_secret_code_bank").val('');
 }

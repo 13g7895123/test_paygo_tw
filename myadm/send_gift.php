@@ -15,8 +15,8 @@ top_html();
                             <i class="fa fa-gift"></i> 手動派獎
                         </h3>
                         <div class="panel-actions">
-                            <button type="button" class="btn btn-sm btn-info" id="itemSettingsBtn" title="物品設定">
-                                <i class="fa fa-cog"></i> 物品設定
+                            <button type="button" class="btn btn-sm btn-info" id="itemSettingsBtn" title="道具設定">
+                                <i class="fa fa-cog"></i> 道具設定
                             </button>
                         </div>
                     </div>
@@ -57,16 +57,16 @@ top_html();
                                     <div class="col-md-12">
                                         <div class="items-section">
                                             <div class="items-header">
-                                                <h4>選擇物品與數量</h4>
+                                                <h4>選擇道具與數量</h4>
                                                 <div class="items-controls">
                                                     <button type="button" class="btn btn-sm btn-success" id="addItemBtn">
-                                                        <i class="fa fa-plus"></i> 新增物品
+                                                        <i class="fa fa-plus"></i> 新增道具
                                                     </button>
                                                 </div>
                                             </div>
                                             
                                             <div id="itemsContainer" class="items-container">
-                                                <!-- 物品項目將通過 JavaScript 動態產生 -->
+                                                <!-- 道具項目將通過 JavaScript 動態產生 -->
                                             </div>
                                         </div>
                                     </div>
@@ -92,7 +92,7 @@ top_html();
                                 
                                 <div class="panel panel-info">
                                     <div class="panel-heading">
-                                        <h5 class="panel-title">贈送詳情</h5>
+                                        <h4 class="panel-title">贈送詳情</h4>
                                     </div>
                                     <div class="panel-body">
                                         <dl class="dl-horizontal">
@@ -100,7 +100,7 @@ top_html();
                                             <dd id="confirmServer">-</dd>
                                             <dt>遊戲帳號：</dt>
                                             <dd id="confirmGameAccount">-</dd>
-                                            <dt>選擇物品：</dt>
+                                            <dt>選擇道具：</dt>
                                             <dd id="confirmItems">-</dd>
                                         </dl>
                                     </div>
@@ -114,6 +114,15 @@ top_html();
                                         <button type="button" class="btn btn-success btn-lg" id="finalSubmitBtn">
                                             <i class="fa fa-send"></i> 確認送出禮物
                                         </button>
+                                        <button type="button" class="btn btn-info btn-lg" id="queryLogBtn" style="display: none;">
+                                            <i class="fa fa-search"></i> 查詢執行記錄
+                                        </button>
+                                        <button type="button" class="btn btn-warning btn-lg" id="testConnectionBtn" style="display: none;">
+                                            <i class="fa fa-plug"></i> 測試連線
+                                        </button>
+                                        <button type="button" class="btn btn-primary btn-lg" id="sendNextBtn" style="display: none;">
+                                            <i class="fa fa-plus-circle"></i> 發送下一筆
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -126,7 +135,7 @@ top_html();
 </section>
 <!-- /MIDDLE -->
 
-<!-- 物品設定 Modal -->
+<!-- 道具設定 Modal -->
 <div class="modal fade" id="itemSettingsModal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
@@ -135,31 +144,31 @@ top_html();
                     <span aria-hidden="true">&times;</span>
                 </button>
                 <h4 class="modal-title">
-                    <i class="fa fa-cog"></i> 物品設定
+                    <i class="fa fa-cog"></i> 道具設定
                 </h4>
             </div>
             <div class="modal-body">
                 <div class="item-settings-section">
-                    <h5 class="section-title">新增物品</h5>
+                    <h5 class="section-title">新增道具</h5>
                     <form id="itemSettingsForm">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="itemGameName">物品遊戲名稱 <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="itemGameName" name="itemGameName" placeholder="輸入物品在遊戲中的名稱" required>
+                                    <label for="itemGameName">道具編號 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="itemGameName" name="itemGameName" placeholder="輸入道具編號" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="itemDatabaseName">資料庫物品名稱 <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="itemDatabaseName" name="itemDatabaseName" placeholder="輸入資料庫中的物品名稱" required>
+                                    <label for="itemDatabaseName">道具名稱</label>
+                                    <input type="text" class="form-control" id="itemDatabaseName" name="itemDatabaseName" placeholder="輸入道具名稱（選填）">
                                 </div>
                             </div>
                         </div>
                         <div class="row">
                             <div class="col-md-12 text-right">
                                 <button type="button" class="btn btn-success" id="addServerItemBtn">
-                                    <i class="fa fa-plus"></i> 新增物品
+                                    <i class="fa fa-plus"></i> 新增道具
                                 </button>
                             </div>
                         </div>
@@ -169,14 +178,14 @@ top_html();
                 <hr class="modal-divider">
                 
                 <div class="server-items-section">
-                    <h5 class="section-title">伺服器物品清單</h5>
+                    <h5 class="section-title">伺服器道具清單</h5>
                     <div class="items-table-container">
                         <div class="table-responsive">
                             <table class="table table-hover items-table" id="serverItemsTable">
                                 <thead>
                                     <tr>
-                                        <th width="40%">遊戲名稱</th>
-                                        <th width="40%">資料庫名稱</th>
+                                        <th width="40%">道具編號</th>
+                                        <th width="40%">道具名稱</th>
                                         <th width="20%">操作</th>
                                     </tr>
                                 </thead>
@@ -547,9 +556,14 @@ down_html();
 }
 
 .stage-item.completed .stage-number::after {
-    content: '✓';
+    /* content: '✓'; */
     position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
     font-size: 16px;
+    color: #28a745;
+    font-weight: bold;
 }
 
 /* 階段內容樣式 */
@@ -673,10 +687,13 @@ down_html();
     width: 120px;
     font-weight: 600;
     color: #495057;
+    font-size: 16px;
 }
 
 .dl-horizontal dd {
     margin-left: 140px;
+    font-size: 16px;
+    font-weight: 500;
 }
 
 /* 按鈕樣式增強 */
@@ -716,7 +733,7 @@ down_html();
     margin-left: 5px;
 }
 
-/* 物品設定 Modal 樣式 */
+/* 道具設定 Modal 樣式 */
 .modal-lg {
     width: 90%;
     max-width: 800px;
@@ -725,11 +742,22 @@ down_html();
 .modal-header .modal-title {
     color: #495057;
     font-weight: 600;
+    font-size: 18px;
 }
 
 .modal-body .form-group label {
     font-weight: 600;
     color: #495057;
+    font-size: 15px;
+}
+
+.modal-body .form-control {
+    font-size: 14px;
+}
+
+.modal-body .section-title {
+    font-size: 16px;
+    font-weight: 600;
 }
 
 /* 模組區域樣式 */
@@ -737,7 +765,6 @@ down_html();
     background-color: #f8f9fa;
     border-radius: 8px;
     padding: 20px;
-    margin-bottom: 20px;
 }
 
 .server-items-section {
@@ -850,21 +877,22 @@ let stageData = {
     items: []
 };
 
-// 物品設定相關變數
+// 派獎記錄ID
+let currentLogId = null;
+
+// 道具設定相關變數
 let itemSettings = {
     gameName: '',
     databaseName: ''
 };
 
-// 物品管理相關變數
-let serverItems = []; // 伺服器上的所有物品
+// 道具管理相關變數
+let serverItems = []; // 伺服器上的所有道具
 
 // 等待 DOM 載入完成
 $(document).ready(function () {
     // 載入伺服器列表
     loadServerList();
-    
-    
     
     // 綁定事件處理器
     bindEventHandlers();
@@ -872,9 +900,9 @@ $(document).ready(function () {
     // 初始化表單
     initializeForm();
     
-    // TODO: 載入物品設定將透過API實作
+    // TODO: 載入道具設定將透過API實作
     
-    // 初始化物品組
+    // 初始化道具組
     initializeItemGroups();
 });
 
@@ -888,35 +916,52 @@ function loadServerList() {
         url: 'api/gift_api.php',
         method: 'GET',
         data: { action: 'get_servers' },
-        dataType: 'json'
+        dataType: 'json',
+        cache: false,
+        xhrFields: {
+            withCredentials: true
+        },
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
     })
     .done(function(response) {
-        if (response.success) {
+        console.log('API Response:', response);
+        if (response && response.success) {
+            // 處理資料格式
             const servers = response.data;
             
             serverSelect.empty();
             serverSelect.append('<option value="">請選擇伺服器</option>');
             
-            servers.forEach(function(server) {
-                serverSelect.append(`<option value="${server.id}">${server.name}</option>`);
-            });
-            
-            // 如果只有一個伺服器，自動選擇
-            if (servers.length === 1) {
-                serverSelect.val(servers[0].id);
-                stageData.server = {
-                    id: servers[0].id,
-                    name: servers[0].name
-                };
-                // 載入該伺服器的物品清單
-                loadServerItemsForSelect(servers[0].id);
+            if (Array.isArray(servers) && servers.length > 0) {
+                servers.forEach(function(server) {
+                    serverSelect.append(`<option value="${server.id}">${server.name}</option>`);
+                });
+                
+                // 如果只有一個伺服器，自動選擇
+                if (servers.length === 1) {
+                    serverSelect.val(servers[0].id);
+                    stageData.server = {
+                        id: servers[0].id,
+                        name: servers[0].name
+                    };
+                    // 載入該伺服器的道具清單
+                    loadServerItemsForSelect(servers[0].id);
+                }
+            } else {
+                serverSelect.append('<option value="">沒有可用的伺服器</option>');
             }
         } else {
             serverSelect.html('<option value="">載入失敗</option>');
-            showNotification('載入伺服器清單失敗：' + response.message, 'error');
+            showNotification('載入伺服器清單失敗：' + (response.message || '未知錯誤'), 'error');
         }
     })
     .fail(function(xhr, status, error) {
+        console.log('API Error - Status:', status);
+        console.log('API Error - Error:', error);
+        console.log('API Error - Response:', xhr.responseText);
+        
         serverSelect.html('<option value="">載入失敗</option>');
         showNotification('載入伺服器清單失敗：連線錯誤', 'error');
         console.error('Load servers error:', error);
@@ -936,7 +981,7 @@ function bindEventHandlers() {
                 id: selectedValue,
                 name: selectedText
             };
-            // 載入該伺服器的物品清單
+            // 載入該伺服器的道具清單
             loadServerItemsForSelect(selectedValue);
         } else {
             stageData.server = null;
@@ -950,17 +995,17 @@ function bindEventHandlers() {
         stageData.gameAccount = $(this).val().trim();
     });
     
-    // 新增物品按鈕
+    // 新增道具按鈕
     $('#addItemBtn').click(function() {
         addItemGroup();
     });
     
-    // 動態綁定移除物品事件
+    // 動態綁定移除道具事件
     $(document).on('click', '.item-group-remove', function() {
         removeItemGroup($(this).closest('.item-group'));
     });
     
-    // 動態綁定物品輸入事件
+    // 動態綁定道具輸入事件
     $(document).on('change input', '.item-select, .item-quantity', function() {
         updateStageDataItems();
     });
@@ -983,6 +1028,25 @@ function bindEventHandlers() {
         handleFinalSubmit();
     });
     
+    // 查詢執行記錄按鈕
+    $('#queryLogBtn').click(function() {
+        queryExecutionLog();
+    });
+    
+    // 測試連線按鈕
+    $('#testConnectionBtn').click(function() {
+        testGameServerConnection();
+    });
+    
+    // 發送下一筆按鈕
+    $('#sendNextBtn').click(function() {
+        // 重置表單並回到第一階段
+        resetForm();
+        goToStage1();
+        $('#sendNextBtn').hide();
+        showNotification('已清空資料，請輸入下一筆派獎資訊', 'info');
+    });
+    
     // 重置按鈕
     $('#stage1Form').on('reset', function() {
         setTimeout(function() {
@@ -990,17 +1054,17 @@ function bindEventHandlers() {
         }, 100);
     });
     
-    // 物品設定按鈕
+    // 道具設定按鈕
     $('#itemSettingsBtn').click(function() {
         openItemSettingsModal();
     });
     
-    // 新增伺服器物品
+    // 新增伺服器道具
     $('#addServerItemBtn').click(function() {
         addServerItem();
     });
     
-    // 物品設定表單輸入監聽
+    // 道具設定表單輸入監聽
     $('#itemGameName').on('input', function() {
         itemSettings.gameName = $(this).val().trim();
     });
@@ -1092,16 +1156,27 @@ function updateConfirmationDisplay() {
     $('#confirmServer').text(stageData.server ? stageData.server.name : '-');
     $('#confirmGameAccount').text(stageData.gameAccount || '-');
     
-    // 顯示選擇的物品
+    // 顯示選擇的道具
     if (stageData.items.length > 0) {
         let itemsText = '';
         stageData.items.forEach((item, index) => {
             if (index > 0) itemsText += '、';
-            itemsText += `${item.name} x${item.quantity}`;
+            // 顯示道具編號，如果有道具名稱則加括號顯示
+            let itemDisplayName = item.gameName || item.databaseName || '未知道具';
+            
+            // 如果道具名稱與編號不同，且不是選項文字，則加括號顯示道具名稱
+            if (item.databaseName && 
+                item.databaseName !== item.gameName && 
+                item.databaseName !== '請選擇道具' &&
+                item.databaseName.trim() !== '') {
+                itemDisplayName += ` (${item.databaseName})`;
+            }
+            
+            itemsText += `${itemDisplayName} x${item.quantity}`;
         });
         $('#confirmItems').text(itemsText);
     } else {
-        $('#confirmItems').text('尚未選擇物品');
+        $('#confirmItems').text('尚未選擇道具');
     }
 }
 
@@ -1145,7 +1220,7 @@ function handleFinalSubmit() {
     const confirmText = `確定要送出禮物嗎？\n\n` +
         `伺服器：${stageData.server.name}\n` +
         `遊戲帳號：${stageData.gameAccount}\n` +
-        `選擇物品：${stageData.items.length} 項`;
+        `選擇道具：${stageData.items.length} 項`;
     
     if (confirm(confirmText)) {
         submitGiftData();
@@ -1157,50 +1232,138 @@ function submitGiftData() {
     // 顯示載入中
     const submitBtn = $('#finalSubmitBtn');
     const originalText = submitBtn.html();
-    submitBtn.html('<i class="fa fa-spinner fa-spin"></i> 處理中...').prop('disabled', true);
+    submitBtn.html('<i class="fa fa-spinner fa-spin"></i> 檢測連線中...').prop('disabled', true);
     
-    // 準備資料
-    const giftData = {
-        action: 'send_gift',
-        server_id: stageData.server.id,
-        server_name: stageData.server.name,
-        game_account: stageData.gameAccount,
-        items: JSON.stringify(stageData.items)
-    };
-    
-    // 發送到後端API
-    $.ajax({
-        url: 'api/gift_api.php',
-        method: 'POST',
-        data: giftData,
-        dataType: 'json'
-    })
-    .done(function(response) {
-        if (response.success) {
-            // 顯示成功訊息
-            showNotification('禮物送出成功！', 'success');
-            
-            // 顯示詳細資訊
-            alert('禮物送出成功！\n\n' + 
-                  `伺服器：${stageData.server.name}\n` +
-                  `遊戲帳號：${stageData.gameAccount}\n` +
-                  `物品數量：${stageData.items.length} 項\n` +
-                  `記錄編號：${response.data.log_id}`);
-            
-            // 重置表單並回到第一階段
-            resetForm();
-        } else {
-            showNotification('禮物送出失敗：' + response.message, 'error');
-        }
-    })
-    .fail(function(xhr, status, error) {
-        showNotification('禮物送出失敗：連線錯誤', 'error');
-        console.error('Submit gift error:', error);
-    })
-    .always(function() {
-        // 恢復按鈕狀態
+    // 恢復按鈕狀態的函數
+    function restoreButton() {
         submitBtn.html(originalText).prop('disabled', false);
-    });
+    }
+    
+    // 處理連線測試成功的回調
+    function handleConnectionTestSuccess(response) {
+        // 檢查連線測試結果
+        if (!response.success) {
+            showNotification('連線測試失敗：' + response.message, 'error');
+            restoreButton();
+            return;
+        }
+        
+        const data = response.data;
+        
+        // 檢查是否有錯誤
+        if (!data.connection.success) {
+            const errorMsg = '無法連接遊戲伺服器：' + (data.connection.error || '未知錯誤');
+            handleConnectionError(errorMsg);
+            return;
+        }
+        
+        if (!data.settings.configured) {
+            const errorMsg = '派獎設定不完整，請先到伺服器設定頁面完成派獎設定';
+            handleConnectionError(errorMsg);
+            return;
+        }
+        
+        if (!data.table_check.success) {
+            const errorMsg = '資料表檢查失敗：' + (data.table_check.error || '未知錯誤');
+            handleConnectionError(errorMsg);
+            return;
+        }
+        
+        if (!data.fields_check.success) {
+            const errorMsg = '欄位檢查失敗：' + (data.fields_check.error || '未知錯誤');
+            handleConnectionError(errorMsg);
+            return;
+        }
+        
+        // 連線測試通過，開始送出禮物
+        submitBtn.html('<i class="fa fa-spinner fa-spin"></i> 送出中...');
+        
+        // 準備資料
+        const giftData = {
+            action: 'send_gift',
+            server_id: stageData.server.id,
+            server_name: stageData.server.name,
+            game_account: stageData.gameAccount,
+            items: JSON.stringify(stageData.items)
+        };
+        
+        // 發送到後端API
+        $.ajax({
+            url: 'api/gift_api.php',
+            method: 'POST',
+            data: giftData,
+            dataType: 'json',
+            timeout: 20000 // 20秒超時
+        })
+        .done(function(response) {
+            if (response.success) {
+                // 保存log ID
+                currentLogId = response.data.log_id;
+                
+                // 隱藏送出按鈕，顯示查詢按鈕和發送下一筆按鈕
+                $('#finalSubmitBtn').hide();
+                $('#queryLogBtn').show();
+                $('#sendNextBtn').show();
+                
+                // 顯示成功訊息
+                showNotification('禮物送出成功！', 'success');
+                
+                // 顯示詳細資訊
+                alert('禮物送出成功！\n\n' + 
+                      `伺服器：${stageData.server.name}\n` +
+                      `遊戲帳號：${stageData.gameAccount}\n` +
+                      `道具數量：${stageData.items.length} 項\n` +
+                      `記錄編號：${response.data.log_id}\n\n` +
+                      `可點擊「查詢執行記錄」按鈕查看詳細的SQL執行資訊`);
+                
+                restoreButton();
+            } else {
+                showNotification('禮物送出失敗：' + (response.message || '未知錯誤'), 'error');
+                restoreButton();
+            }
+        })
+        .fail(function(xhr, status, error) {
+            let errorMessage = '送出失敗：';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += xhr.responseJSON.message;
+            } else if (status === 'timeout') {
+                errorMessage += '請求超時';
+            } else {
+                errorMessage += '連線錯誤';
+            }
+            
+            showNotification(errorMessage, 'error');
+            restoreButton();
+        });
+    }
+    
+    // 處理連線相關錯誤
+    function handleConnectionError(errorMessage) {
+        showNotification('送出失敗：' + errorMessage, 'error');
+        
+        // 詢問是否要查看詳細測試結果
+        if (confirm('送出失敗：' + errorMessage + '\n\n是否要查看詳細的連線測試結果？')) {
+            testGameServerConnection(true); // 顯示測試連線Modal
+        }
+        
+        restoreButton();
+    }
+    
+    // 先執行背景連線測試
+    testGameServerConnection(false)
+        .done(handleConnectionTestSuccess)
+        .fail(function(xhr, status, error) {
+            let errorMessage = '連線測試失敗：';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage += xhr.responseJSON.message;
+            } else if (status === 'timeout') {
+                errorMessage += '連線超時';
+            } else {
+                errorMessage += '連線錯誤';
+            }
+            
+            handleConnectionError(errorMessage);
+        });
 }
 
 // 記錄派送資料
@@ -1226,19 +1389,25 @@ function resetForm() {
     // 重置階段資料
     resetStageData();
     
-    // 重新初始化物品組
+    // 重置log ID和按鈕狀態
+    currentLogId = null;
+    $('#finalSubmitBtn').show();
+    $('#queryLogBtn').hide();
+    $('#sendNextBtn').hide();
+    
+    // 重新初始化道具組
     initializeItemGroups();
     
     // 回到第一階段
     goToStage1();
 }
 
-// 取得物品類型文字
+// 取得道具類型文字
 function getItemTypeText(itemType) {
     const itemTypeText = {
         'points': '點數',
         'coupon': '優惠券',
-        'item': '實體物品'
+        'item': '實體道具'
     };
     return itemTypeText[itemType] || itemType;
 }
@@ -1249,36 +1418,41 @@ function showDeliveryRecords() {
     alert('此功能將透過 API 實作');
 }
 
-// 開啟物品設定 Modal
+// 開啟道具設定 Modal
 function openItemSettingsModal() {
+    // 檢查是否已選擇伺服器
+    const selectedServerId = $('#serverSelect').val();
+    if (!selectedServerId) {
+        // 如果沒有選擇伺服器，自動focus到伺服器選擇欄位
+        $('#serverSelect').focus();
+        showNotification('請先選擇伺服器', 'warning');
+        return;
+    }
+    
     $('#itemSettingsModal').modal('show');
     
     // 載入現有設定到表單
     $('#itemGameName').val(itemSettings.gameName);
     $('#itemDatabaseName').val(itemSettings.databaseName);
     
-    // 載入伺服器物品清單
+    // 載入伺服器道具清單
     loadServerItems();
 }
 
 
-// 驗證物品設定表單
+// 驗證道具設定表單
 function validateItemSettings() {
     let isValid = true;
     let errorMessages = [];
     
-    // 檢查必填欄位
+    // 檢查必填欄位 - 只有道具編號是必填的
     if (!itemSettings.gameName) {
-        errorMessages.push('請輸入物品遊戲名稱');
+        errorMessages.push('請輸入道具編號');
         $('#itemGameName').focus();
         isValid = false;
     }
     
-    if (!itemSettings.databaseName) {
-        errorMessages.push('請輸入資料庫物品名稱');
-        if (isValid) $('#itemDatabaseName').focus();
-        isValid = false;
-    }
+    // 道具名稱為非必填，移除驗證
     
     if (!isValid) {
         alert('請檢查以下問題：\n' + errorMessages.join('\n'));
@@ -1287,7 +1461,7 @@ function validateItemSettings() {
     return isValid;
 }
 
-// 新增伺服器物品
+// 新增伺服器道具
 function addServerItem() {
     // 驗證表單
     if (!validateItemSettings()) {
@@ -1318,14 +1492,14 @@ function addServerItem() {
     })
     .done(function(response) {
         if (response.success) {
-            // 重新載入伺服器物品清單（用於選擇）
+            // 重新載入伺服器道具清單（用於選擇）
             loadServerItemsForSelect(stageData.server.id);
             
-            // 重新載入伺服器物品清單（用於顯示）
+            // 重新載入伺服器道具清單（用於顯示）
             loadServerItems();
             
             // 顯示成功訊息
-            showNotification('物品新增成功！', 'success');
+            showNotification('道具新增成功！', 'success');
             
             // 清空表單
             $('#itemGameName').val('');
@@ -1333,11 +1507,11 @@ function addServerItem() {
             itemSettings.gameName = '';
             itemSettings.databaseName = '';
         } else {
-            showNotification('物品新增失敗：' + response.message, 'error');
+            showNotification('道具新增失敗：' + response.message, 'error');
         }
     })
     .fail(function(xhr, status, error) {
-        showNotification('物品新增失敗：連線錯誤', 'error');
+        showNotification('道具新增失敗：連線錯誤', 'error');
         console.error('Add server item error:', error);
     })
     .always(function() {
@@ -1346,7 +1520,7 @@ function addServerItem() {
 }
 
 
-// 載入伺服器物品清單（用於選擇選項）
+// 載入伺服器道具清單（用於選擇選項）
 function loadServerItemsForSelect(serverId) {
     if (!serverId) {
         serverItems = [];
@@ -1374,18 +1548,18 @@ function loadServerItemsForSelect(serverId) {
         } else {
             serverItems = [];
             updateAllItemOptions();
-            showNotification('載入物品清單失敗：' + response.message, 'error');
+            showNotification('載入道具清單失敗：' + response.message, 'error');
         }
     })
     .fail(function(xhr, status, error) {
         serverItems = [];
         updateAllItemOptions();
-        showNotification('載入物品清單失敗：連線錯誤', 'error');
+        showNotification('載入道具清單失敗：連線錯誤', 'error');
         console.error('Load server items error:', error);
     });
 }
 
-// 載入已儲存的物品設定
+// 載入已儲存的道具設定
 function loadSavedItemSettings() {
     // 這個函數在選擇伺服器時會被調用
     itemSettings = {
@@ -1394,18 +1568,18 @@ function loadSavedItemSettings() {
     };
 }
 
-// 初始化物品組（預設5組）
+// 初始化道具組（預設5組）
 function initializeItemGroups() {
     const container = $('#itemsContainer');
     container.empty();
     
-    // 建立5個預設物品組
+    // 建立5個預設道具組
     for (let i = 0; i < 5; i++) {
         addItemGroup();
     }
 }
 
-// 新增物品組
+// 新增道具組
 function addItemGroup() {
     const container = $('#itemsContainer');
     const groupIndex = container.children('.item-group').length;
@@ -1413,17 +1587,17 @@ function addItemGroup() {
     const itemGroup = $(`
         <div class="item-group" data-index="${groupIndex}">
             <div class="item-group-header">
-                <h6 class="item-group-title">物品 ${groupIndex + 1}</h6>
-                <span class="item-group-remove" title="移除此物品">
+                <h6 class="item-group-title">道具 ${groupIndex + 1}</h6>
+                <span class="item-group-remove" title="移除此道具">
                     <i class="fa fa-times"></i>
                 </span>
             </div>
             <div class="row">
                 <div class="col-md-8">
                     <div class="form-group">
-                        <label>選擇物品</label>
+                        <label>選擇道具</label>
                         <select class="form-control item-select" data-index="${groupIndex}">
-                            <option value="">請選擇物品</option>
+                            <option value="">請選擇道具</option>
                         </select>
                     </div>
                 </div>
@@ -1439,14 +1613,14 @@ function addItemGroup() {
     
     container.append(itemGroup);
     
-    // 載入物品選項
+    // 載入道具選項
     updateItemOptions(itemGroup.find('.item-select'));
     
     // 更新移除按鈕狀態
     updateRemoveButtons();
 }
 
-// 移除物品組
+// 移除道具組
 function removeItemGroup(itemGroup) {
     const container = $('#itemsContainer');
     const totalGroups = container.children('.item-group').length;
@@ -1460,11 +1634,11 @@ function removeItemGroup(itemGroup) {
     }
 }
 
-// 更新物品組索引
+// 更新道具組索引
 function updateItemIndices() {
     $('#itemsContainer .item-group').each(function(index) {
         $(this).attr('data-index', index);
-        $(this).find('.item-group-title').text(`物品 ${index + 1}`);
+        $(this).find('.item-group-title').text(`道具 ${index + 1}`);
         $(this).find('.item-select, .item-quantity').attr('data-index', index);
     });
 }
@@ -1481,17 +1655,22 @@ function updateRemoveButtons() {
     }
 }
 
-// 更新物品選項
+// 更新道具選項
 function updateItemOptions(selectElement) {
     selectElement.empty();
-    selectElement.append('<option value="">請選擇物品</option>');
+    selectElement.append('<option value="">請選擇道具</option>');
     
     serverItems.forEach(function(item) {
-        selectElement.append(`<option value="${item.databaseName}">${item.gameName}</option>`);
+        // 優先顯示道具編號，如果有道具名稱則一併顯示
+        let displayText = item.gameName;
+        if (item.databaseName && item.databaseName !== item.gameName) {
+            displayText += ` (${item.databaseName})`;
+        }
+        selectElement.append(`<option value="${item.databaseName || item.gameName}">${displayText}</option>`);
     });
 }
 
-// 更新所有物品選項
+// 更新所有道具選項
 function updateAllItemOptions() {
     $('.item-select').each(function() {
         const currentValue = $(this).val();
@@ -1500,7 +1679,7 @@ function updateAllItemOptions() {
     });
 }
 
-// 更新階段資料中的物品
+// 更新階段資料中的道具
 function updateStageDataItems() {
     const items = [];
     
@@ -1513,8 +1692,13 @@ function updateStageDataItems() {
         
         if (itemValue) {
             const itemName = itemSelect.find('option:selected').text();
+            // 找到對應的道具資料
+            const selectedItem = serverItems.find(item => 
+                item.databaseName === itemValue || item.gameName === itemValue
+            );
             items.push({
                 databaseName: itemValue,
+                gameName: selectedItem ? selectedItem.gameName : itemValue,
                 name: itemName,
                 quantity: quantity
             });
@@ -1524,7 +1708,7 @@ function updateStageDataItems() {
     stageData.items = items;
 }
 
-// 載入伺服器物品清單
+// 載入伺服器道具清單
 function loadServerItems() {
     if (!stageData.server || !stageData.server.id) {
         const tableBody = $('#serverItemsTableBody');
@@ -1549,7 +1733,7 @@ function loadServerItems() {
             const items = response.data;
             
             if (items.length === 0) {
-                tableBody.html('<tr><td colspan="3" class="text-center text-muted">目前沒有設定任何物品</td></tr>');
+                tableBody.html('<tr><td colspan="3" class="text-center text-muted">目前沒有設定任何道具</td></tr>');
             } else {
                 let html = '';
                 items.forEach(function(item) {
@@ -1558,7 +1742,7 @@ function loadServerItems() {
                             <td>${item.game_name}</td>
                             <td>${item.database_name}</td>
                             <td>
-                                <button type="button" class="btn btn-xs btn-danger" onclick="removeServerItem(${item.id})" title="刪除物品">
+                                <button type="button" class="btn btn-xs btn-danger" onclick="removeServerItem(${item.id})" title="刪除道具">
                                     <i class="fa fa-trash"></i> 刪除
                                 </button>
                             </td>
@@ -1575,6 +1759,138 @@ function loadServerItems() {
         tableBody.html('<tr><td colspan="3" class="text-center text-danger">載入失敗：連線錯誤</td></tr>');
         console.error('Load server items error:', error);
     });
+}
+
+// 查詢執行記錄
+function queryExecutionLog() {
+    if (!currentLogId) {
+        showNotification('沒有可查詢的記錄', 'error');
+        return;
+    }
+    
+    // 顯示載入中
+    const queryBtn = $('#queryLogBtn');
+    const originalText = queryBtn.html();
+    queryBtn.html('<i class="fa fa-spinner fa-spin"></i> 查詢中...').prop('disabled', true);
+    
+    $.ajax({
+        url: 'api/gift_api.php',
+        method: 'GET',
+        data: { 
+            action: 'get_gift_execution_log',
+            log_id: currentLogId
+        },
+        dataType: 'json',
+        xhrFields: {
+            withCredentials: true
+        }
+    })
+    .done(function(response) {
+        if (response.success) {
+            displayExecutionLogModal(response.data);
+        } else {
+            showNotification('查詢執行記錄失敗：' + response.message, 'error');
+        }
+    })
+    .fail(function(xhr, status, error) {
+        showNotification('查詢執行記錄失敗：連線錯誤', 'error');
+        console.error('Query execution log error:', error);
+    })
+    .always(function() {
+        queryBtn.html(originalText).prop('disabled', false);
+    });
+}
+
+// 顯示執行記錄Modal
+function displayExecutionLogModal(data) {
+    let modalContent = `
+        <div class="modal fade" id="executionLogModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title">派獎執行記錄 #${data.log.id}</h4>
+                    </div>
+                    <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
+                        <h5>基本資訊</h5>
+                        <table class="table table-bordered">
+                            <tr><td><strong>伺服器</strong></td><td>${data.log.server_full_name} (${data.log.server_name})</td></tr>
+                            <tr><td><strong>遊戲帳號</strong></td><td>${data.log.game_account}</td></tr>
+                            <tr><td><strong>道具總數</strong></td><td>${data.log.total_items}</td></tr>
+                            <tr><td><strong>執行狀態</strong></td><td>${data.log.status}</td></tr>
+                            <tr><td><strong>操作人員</strong></td><td>${data.log.operator_name}</td></tr>
+                            <tr><td><strong>建立時間</strong></td><td>${data.log.created_at}</td></tr>
+                        </table>
+                        
+                        <h5>資料庫連線資訊</h5>
+                        <table class="table table-bordered">
+                            <tr><td><strong>資料庫位址</strong></td><td>${data.server_info.db_ip || 'Not configured'}</td></tr>
+                            <tr><td><strong>資料庫端口</strong></td><td>${data.server_info.db_port || 'Not configured'}</td></tr>
+                            <tr><td><strong>資料庫名稱</strong></td><td>${data.server_info.db_name || 'Not configured'}</td></tr>
+                            <tr><td><strong>資料庫用戶</strong></td><td>${data.server_info.db_user || 'Not configured'}</td></tr>
+                        </table>
+                        
+                        <h5>派獎設定</h5>
+                        <table class="table table-bordered">
+                            <tr><td><strong>目標資料表</strong></td><td>${data.summary.target_table}</td></tr>
+                            <tr><td><strong>帳號欄位</strong></td><td>${data.summary.account_field}</td></tr>
+                        </table>
+    `;
+    
+    if (data.dynamic_fields && data.dynamic_fields.length > 0) {
+        modalContent += `
+                        <h6>動態欄位</h6>
+                        <table class="table table-bordered table-sm">
+                            <thead><tr><th>欄位名稱</th><th>欄位值</th></tr></thead>
+                            <tbody>
+        `;
+        data.dynamic_fields.forEach(field => {
+            modalContent += `<tr><td>${field.field_name}</td><td>${field.field_value}</td></tr>`;
+        });
+        modalContent += `</tbody></table>`;
+    }
+    
+    modalContent += `
+                        <h5>執行SQL (共${data.summary.total_sqls}條)</h5>
+    `;
+    
+    if (data.execution_sqls && data.execution_sqls.length > 0) {
+        data.execution_sqls.forEach((sqlData, index) => {
+            modalContent += `
+                        <div class="panel panel-default">
+                            <div class="panel-heading">
+                                <h6>SQL #${index + 1}: ${sqlData.description}</h6>
+                            </div>
+                            <div class="panel-body">
+                                <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; font-size: 12px;">${sqlData.sql}</pre>
+                            </div>
+                        </div>
+            `;
+        });
+    } else {
+        modalContent += '<p class="text-warning">未設定派獎參數，無法生成執行SQL</p>';
+    }
+    
+    modalContent += `
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">關閉</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 移除舊的modal
+    $('#executionLogModal').remove();
+    
+    // 加入新的modal
+    $('body').append(modalContent);
+    
+    // 顯示modal
+    $('#executionLogModal').modal('show');
 }
 
 // 工具函數：顯示通知
@@ -1600,9 +1916,9 @@ function showNotification(message, type = 'info') {
     }, 5000);
 }
 
-// 移除伺服器物品
+// 移除伺服器道具
 function removeServerItem(itemId) {
-    if (confirm('確定要移除此物品嗎？')) {
+    if (confirm('確定要移除此道具嗎？')) {
         $.ajax({
             url: 'api/gift_api.php',
             method: 'POST',
@@ -1614,24 +1930,186 @@ function removeServerItem(itemId) {
         })
         .done(function(response) {
             if (response.success) {
-                showNotification('物品移除成功！', 'success');
+                showNotification('道具移除成功！', 'success');
                 
-                // 重新載入伺服器物品清單（用於選擇）
+                // 重新載入伺服器道具清單（用於選擇）
                 if (stageData.server && stageData.server.id) {
                     loadServerItemsForSelect(stageData.server.id);
                 }
                 
-                // 重新載入伺服器物品清單（用於顯示）
+                // 重新載入伺服器道具清單（用於顯示）
                 loadServerItems();
             } else {
-                showNotification('物品移除失敗：' + response.message, 'error');
+                showNotification('道具移除失敗：' + response.message, 'error');
             }
         })
         .fail(function(xhr, status, error) {
-            showNotification('物品移除失敗：連線錯誤', 'error');
+            showNotification('道具移除失敗：連線錯誤', 'error');
             console.error('Remove server item error:', error);
         });
     }
+}
+
+// 測試遊戲伺服器連線
+function testGameServerConnection(showModal = true) {
+    const serverId = stageData.server ? stageData.server.id : null;
+    
+    if (!serverId) {
+        showNotification('請先選擇伺服器', 'error');
+        return Promise.reject('請先選擇伺服器');
+    }
+    
+    // 顯示載入中
+    const testBtn = $('#testConnectionBtn');
+    const originalText = testBtn.html();
+    if (showModal) {
+        testBtn.html('<i class="fa fa-spinner fa-spin"></i> 測試中...').prop('disabled', true);
+    }
+    
+    // 準備要送出的道具資料，用來檢查是否需要驗證道具名稱欄位
+    const itemsToSend = stageData.items || [];
+    
+    return $.ajax({
+        url: 'api/gift_api.php',
+        type: 'POST',
+        data: {
+            action: 'test_game_server_connection',
+            server_id: serverId,
+            items: itemsToSend,
+            quick_test: !showModal // 背景測試時使用快速模式
+        },
+        dataType: 'json',
+        timeout: 15000 // 15秒超時
+    })
+    .done(function(response) {
+        if (response.success) {
+            if (showModal) {
+                displayConnectionTestModal(response.data);
+            }
+        } else {
+            if (showModal) {
+                showNotification('連線測試失敗：' + response.message, 'error');
+            }
+        }
+    })
+    .fail(function(xhr, status, error) {
+        if (showModal) {
+            if (status === 'timeout') {
+                showNotification('連線測試失敗：連線超時', 'error');
+            } else {
+                showNotification('連線測試失敗：連線錯誤', 'error');
+            }
+        }
+        console.error('Connection test error:', error);
+    })
+    .always(function() {
+        if (showModal) {
+            testBtn.html(originalText).prop('disabled', false);
+        }
+    });
+}
+
+// 顯示連線測試結果Modal
+function displayConnectionTestModal(data) {
+    const getStatusBadge = (success) => {
+        return success ? '<span class="label label-success">成功</span>' : '<span class="label label-danger">失敗</span>';
+    };
+    
+    let modalContent = `
+        <div class="modal fade" id="connectionTestModal" tabindex="-1" role="dialog">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title">遊戲伺服器連線測試結果</h4>
+                    </div>
+                    <div class="modal-body" style="max-height: 600px; overflow-y: auto;">
+                        <h5>伺服器資訊</h5>
+                        <table class="table table-bordered">
+                            <tr><td><strong>伺服器ID</strong></td><td>${data.server_info.id}</td></tr>
+                            <tr><td><strong>伺服器名稱</strong></td><td>${data.server_info.name}</td></tr>
+                            <tr><td><strong>主機位址</strong></td><td>${data.server_info.host}</td></tr>
+                            <tr><td><strong>埠號</strong></td><td>${data.server_info.port}</td></tr>
+                            <tr><td><strong>資料庫名稱</strong></td><td>${data.server_info.database}</td></tr>
+                            <tr><td><strong>使用者名稱</strong></td><td>${data.server_info.user}</td></tr>
+                        </table>
+                        
+                        <h5>連線狀態</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>資料庫連線</strong></td>
+                                <td>${getStatusBadge(data.connection.success)}</td>
+                            </tr>
+                            ${data.connection.error ? `<tr><td colspan="2"><small class="text-danger">${data.connection.error}</small></td></tr>` : ''}
+                        </table>
+                        
+                        <h5>派獎設定檢查</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>設定完整性</strong></td>
+                                <td>${getStatusBadge(data.settings.configured)}</td>
+                            </tr>
+                            <tr><td><strong>資料表名稱</strong></td><td>${data.settings.table_name || '<span class="text-muted">未設定</span>'}</td></tr>
+                            <tr><td><strong>帳號欄位</strong></td><td>${data.settings.account_field || '<span class="text-muted">未設定</span>'}</td></tr>
+                            <tr><td><strong>道具編號欄位</strong></td><td>${data.settings.item_field || '<span class="text-muted">未設定（預設：item_id）</span>'}</td></tr>
+                            <tr><td><strong>道具名稱欄位</strong></td><td>${data.settings.item_name_field || '<span class="text-muted">未設定</span>'}</td></tr>
+                            <tr><td><strong>數量欄位</strong></td><td>${data.settings.quantity_field || '<span class="text-muted">未設定（預設：quantity）</span>'}</td></tr>
+                        </table>`;
+                        
+    if (data.connection.success && data.settings.configured) {
+        modalContent += `
+                        <h5>資料表與欄位檢查</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>資料表存在</strong></td>
+                                <td>${getStatusBadge(data.table_check.success)}</td>
+                            </tr>
+                            ${data.table_check.error ? `<tr><td colspan="2"><small class="text-danger">${data.table_check.error}</small></td></tr>` : ''}
+                            <tr>
+                                <td><strong>必要欄位存在</strong></td>
+                                <td>${getStatusBadge(data.fields_check.success)}</td>
+                            </tr>
+                            ${data.fields_check.error ? `<tr><td colspan="2"><small class="text-danger">${data.fields_check.error}</small></td></tr>` : ''}
+                        </table>`;
+    }
+    
+    if (data.database_info && !data.database_info.error) {
+        modalContent += `
+                        <h5>資料庫版本資訊</h5>
+                        <table class="table table-bordered">
+                            <tr><td><strong>MySQL版本</strong></td><td>${data.database_info.version}</td></tr>
+                            <tr><td><strong>字元編碼</strong></td><td>${data.database_info.charset}</td></tr>
+                        </table>`;
+    }
+    
+    modalContent += `
+                        <div class="alert ${data.connection.success && (!data.settings.configured || (data.table_check.success && data.fields_check.success)) ? 'alert-success' : 'alert-warning'}" style="margin-top: 20px;">
+                            <strong>總結：</strong>
+                            ${data.connection.success ? 
+                                (!data.settings.configured ? '資料庫連線正常，但派獎設定尚未完成。請到伺服器設定頁面完成派獎設定。' :
+                                 (data.table_check.success && data.fields_check.success ? '所有檢查項目都通過！可以正常執行派獎。' :
+                                  '資料庫連線正常，但資料表或欄位設定有問題，請檢查派獎設定。')) :
+                                '無法連接到遊戲伺服器，請檢查伺服器設定或網路連線。'}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-default" data-dismiss="modal">關閉</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 移除舊的modal
+    $('#connectionTestModal').remove();
+    
+    // 加入新的modal
+    $('body').append(modalContent);
+    
+    // 顯示modal
+    $('#connectionTestModal').modal('show');
 }
 
 </script>

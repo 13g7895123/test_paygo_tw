@@ -602,16 +602,11 @@ function chtimet($str)
 
 }
 
-function _r($str)
-
-{
-
-    $val = !empty($_REQUEST[$str]) ? $_REQUEST[$str] : null;
-
-
-
-    return $val;
-
+if (!function_exists('_r')) {
+    function _r($str) {
+        $val = !empty($_REQUEST[$str]) ? $_REQUEST[$str] : null;
+        return $val;
+    }
 }
 
 function _s($str)
