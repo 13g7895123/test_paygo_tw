@@ -4,21 +4,21 @@
  * 實作ANT銀行轉帳相關的API功能
  */
 class ANTApiService {
-    
-    private $merchant_id;
-    private $ant_key;
+
+    private $username;
+    private $hash_key;
     private $hash_iv;
     private $is_production;
     private $api_base_url;
-    
+
     /**
      * 建構子
      */
-    public function __construct($merchant_id = null, $ant_key = null, $is_production = false) {
+    public function __construct($username = null, $hash_key = null, $hash_iv = null, $is_production = false) {
         // 使用提供的真實憑證
-        $this->merchant_id = $merchant_id ?: 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP';
-        $this->ant_key = $ant_key ?: 'lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S';
-        $this->hash_iv = 'yhncs1WpMo60azxEczokzIlVVvVuW69p'; // 新增hash_iv屬性
+        $this->username = $username ?: 'antpay018';
+        $this->hash_key = $hash_key ?: 'lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S';
+        $this->hash_iv = $hash_iv ?: 'yhncs1WpMo60azxEczokzIlVVvVuW69p';
         $this->is_production = $is_production;
 
         // 設定API基礎URL
@@ -31,42 +31,68 @@ class ANTApiService {
      */
     public function createPayment($order_data) {
         try {
-            // 驗證必要參數
-            $required_fields = ['order_id', 'amount', 'user_bank_code', 'user_bank_account'];
+            // 驗證必要參數 - 修正為與ant_order_test.php一致的參數名稱
+            $required_fields = ['partner_number', 'amount', 'user_bank_code', 'user_bank_account'];
             foreach ($required_fields as $field) {
                 if (empty($order_data[$field])) {
                     throw new Exception("缺少必要參數: {$field}");
                 }
             }
-            
+
             // 驗證銀行代號格式
             if (!$this->validateBankCode($order_data['user_bank_code'])) {
                 throw new Exception("銀行代號格式錯誤");
             }
-            
-            // 準備API請求參數
-            $api_data = [
-                'merchant_id' => $this->merchant_id,
-                'order_id' => $order_data['order_id'],
-                'amount' => $order_data['amount'],
-                'user_bank_code' => $order_data['user_bank_code'],
-                'user_bank_account' => $order_data['user_bank_account'],
-                'callback_url' => $order_data['callback_url'] ?? '',
-                'return_url' => $order_data['return_url'] ?? '',
-                'timestamp' => time()
+
+            // 準備expected_banks參數 (JSON格式)
+            $expected_banks = [
+                [
+                    'bank_code' => $order_data['user_bank_code'],
+                    'bank_account' => $order_data['user_bank_account']
+                ]
             ];
-            
+
+            // 準備API請求參數 (根據真實API文檔) - 修正參數名稱以與ant_order_test.php一致
+            $api_data = [
+                'username' => $this->username,
+                'partner_number' => $order_data['partner_number'], // 直接使用partner_number
+                'payment_type_slug' => 'BANK-ACCOUNT-DEPOSIT',
+                'amount' => (int)$order_data['amount'],
+                'item_name' => $order_data['item_name'] ?? '線上支付',
+                'trade_desc' => $order_data['trade_desc'] ?? '線上支付',
+                'notify_url' => $order_data['notify_url'] ?? '', // 修正為notify_url
+                'expected_banks' => json_encode($expected_banks),
+                'remark' => $order_data['remark'] ?? ''
+            ];
+
             // 生成簽名
-            $api_data['signature'] = $this->generateSignature($api_data);
-            
+            $api_data['sign'] = $this->generateSignature($api_data);
+
             // 調用ANT API
-            $response = $this->callApi('/payment/create', $api_data);
-            
+            $response = $this->callApi('/api/partner/deposit-orders', $api_data, 'POST');
+
             // 記錄API調用日誌
             $this->logApiCall('createPayment', $api_data, $response);
-            
-            return $response;
-            
+
+            // 處理回應
+            if (isset($response['result']) && $response['result'] === 'success') {
+                return [
+                    'success' => true,
+                    'order_number' => $response['content']['number'] ?? '',
+                    'partner_number' => $response['content']['partner_number'] ?? '',
+                    'amount' => $response['content']['amount'] ?? 0,
+                    'status' => $response['content']['status'] ?? 1,
+                    'payment_info' => $response['content']['payment_info'] ?? [],
+                    'message' => $response['message'] ?? '建立成功'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'error' => $response['message'] ?? '建立訂單失敗',
+                    'code' => 'PAYMENT_CREATE_ERROR'
+                ];
+            }
+
         } catch (Exception $e) {
             $this->logError('createPayment', $e->getMessage(), $order_data);
             return [
@@ -78,176 +104,51 @@ class ANTApiService {
     }
     
     /**
-     * 2. 銀行帳戶驗證 (Bank Account Validation)
-     * 驗證使用者提供的銀行代號和帳號是否有效
-     */
-    public function validateBankAccount($bank_code, $account_number) {
-        try {
-            // 基本格式驗證
-            if (!$this->validateBankCode($bank_code)) {
-                return [
-                    'success' => false,
-                    'error' => '銀行代號格式錯誤',
-                    'code' => 'INVALID_BANK_CODE'
-                ];
-            }
-            
-            if (empty($account_number)) {
-                return [
-                    'success' => false,
-                    'error' => '銀行帳號不能為空',
-                    'code' => 'INVALID_ACCOUNT_NUMBER'
-                ];
-            }
-            
-            // 準備API請求參數
-            $api_data = [
-                'merchant_id' => $this->merchant_id,
-                'bank_code' => $bank_code,
-                'account_number' => $account_number,
-                'timestamp' => time()
-            ];
-            
-            // 生成簽名
-            $api_data['signature'] = $this->generateSignature($api_data);
-            
-            // 調用ANT API
-            $response = $this->callApi('/account/validate', $api_data);
-            
-            // 記錄API調用日誌
-            $this->logApiCall('validateBankAccount', $api_data, $response);
-            
-            return $response;
-            
-        } catch (Exception $e) {
-            $this->logError('validateBankAccount', $e->getMessage(), compact('bank_code', 'account_number'));
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'code' => 'VALIDATION_ERROR'
-            ];
-        }
-    }
-    
-    /**
-     * 3. 支付狀態查詢 (Payment Status Query)
+     * 2. 支付狀態查詢 (Payment Status Query)
      * 查詢ANT支付交易的當前狀態
      */
-    public function queryPaymentStatus($order_id) {
+    public function queryPaymentStatus($order_number) {
         try {
-            if (empty($order_id)) {
+            if (empty($order_number)) {
                 throw new Exception("訂單編號不能為空");
             }
-            
+
             // 準備API請求參數
             $api_data = [
-                'merchant_id' => $this->merchant_id,
-                'order_id' => $order_id,
-                'timestamp' => time()
+                'username' => $this->username
             ];
-            
+
             // 生成簽名
-            $api_data['signature'] = $this->generateSignature($api_data);
-            
-            // 調用ANT API
-            $response = $this->callApi('/payment/status', $api_data);
-            
+            $api_data['sign'] = $this->generateSignature($api_data);
+
+            // 調用ANT API (使用GET方法查詢單筆訂單)
+            $endpoint = '/api/partner/deposit-orders/' . urlencode($order_number);
+            $response = $this->callApi($endpoint, $api_data, 'GET');
+
             // 記錄API調用日誌
             $this->logApiCall('queryPaymentStatus', $api_data, $response);
-            
-            return $response;
-            
+
+            // 處理回應
+            if (isset($response['result']) && $response['result'] === 'success') {
+                return [
+                    'success' => true,
+                    'order_info' => $response['content'] ?? [],
+                    'message' => $response['message'] ?? '查詢成功'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'error' => $response['message'] ?? '查詢失敗',
+                    'code' => 'STATUS_QUERY_ERROR'
+                ];
+            }
+
         } catch (Exception $e) {
-            $this->logError('queryPaymentStatus', $e->getMessage(), compact('order_id'));
+            $this->logError('queryPaymentStatus', $e->getMessage(), compact('order_number'));
             return [
                 'success' => false,
                 'error' => $e->getMessage(),
                 'code' => 'STATUS_QUERY_ERROR'
-            ];
-        }
-    }
-    
-    /**
-     * 4. 支付結果通知處理 (Payment Notification Handler)
-     * 處理ANT服務的支付結果回調通知
-     */
-    public function handleNotification($notification_data) {
-        try {
-            // 驗證通知簽名
-            if (!$this->verifyNotificationSignature($notification_data)) {
-                throw new Exception("通知簽名驗證失敗");
-            }
-            
-            // 處理通知內容
-            $order_id = $notification_data['order_id'] ?? '';
-            $status = $notification_data['status'] ?? '';
-            $amount = $notification_data['amount'] ?? 0;
-            
-            if (empty($order_id)) {
-                throw new Exception("通知中缺少訂單編號");
-            }
-            
-            // 記錄通知日誌
-            $this->logApiCall('handleNotification', $notification_data, ['processed' => true]);
-            
-            return [
-                'success' => true,
-                'order_id' => $order_id,
-                'status' => $status,
-                'amount' => $amount,
-                'message' => '通知處理成功'
-            ];
-            
-        } catch (Exception $e) {
-            $this->logError('handleNotification', $e->getMessage(), $notification_data);
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'code' => 'NOTIFICATION_ERROR'
-            ];
-        }
-    }
-    
-    /**
-     * 5. 退款請求 (Refund Request)
-     * 處理ANT支付的退款申請
-     */
-    public function createRefund($refund_data) {
-        try {
-            // 驗證必要參數
-            $required_fields = ['original_order_id', 'refund_amount'];
-            foreach ($required_fields as $field) {
-                if (empty($refund_data[$field])) {
-                    throw new Exception("缺少必要參數: {$field}");
-                }
-            }
-            
-            // 準備API請求參數
-            $api_data = [
-                'merchant_id' => $this->merchant_id,
-                'original_order_id' => $refund_data['original_order_id'],
-                'refund_amount' => $refund_data['refund_amount'],
-                'refund_reason' => $refund_data['refund_reason'] ?? '客戶申請退款',
-                'timestamp' => time()
-            ];
-            
-            // 生成簽名
-            $api_data['signature'] = $this->generateSignature($api_data);
-            
-            // 調用ANT API
-            $response = $this->callApi('/refund/create', $api_data);
-            
-            // 記錄API調用日誌
-            $this->logApiCall('createRefund', $api_data, $response);
-            
-            return $response;
-            
-        } catch (Exception $e) {
-            $this->logError('createRefund', $e->getMessage(), $refund_data);
-            return [
-                'success' => false,
-                'error' => $e->getMessage(),
-                'code' => 'REFUND_ERROR'
             ];
         }
     }
@@ -260,77 +161,93 @@ class ANTApiService {
     }
     
     /**
-     * 生成API簽名
+     * 生成API簽名 (根據ANT API文檔的簽章生成規則)
      */
     private function generateSignature($data) {
-        // 移除signature欄位
-        unset($data['signature']);
+        // 移除sign欄位
+        unset($data['sign']);
 
-        // 按鍵名排序
+        // 按英文字母 A-Z 排序
         ksort($data);
 
-        // 組合簽名字串
-        $sign_string = '';
+        // 組合參數字串
+        $params = [];
         foreach ($data as $key => $value) {
-            if (!empty($value)) {
-                $sign_string .= $key . '=' . $value . '&';
+            if ($value !== '' && $value !== null) {
+                $params[] = $key . '=' . $value;
             }
         }
+        $param_string = implode('&', $params);
 
-        // 加入密鑰和IV
-        $sign_string .= 'hash_key=' . $this->ant_key . '&hash_iv=' . $this->hash_iv;
+        // 加上 HashKey 和 HashIV
+        $sign_string = 'HashKey=' . $this->hash_key . '&' . $param_string . '&HashIV=' . $this->hash_iv;
 
-        // 生成MD5簽名
-        return strtoupper(md5($sign_string));
+        // URL encode
+        $encoded_string = urlencode($sign_string);
+
+        // 轉小寫
+        $lowercase_string = strtolower($encoded_string);
+
+        // SHA256 加密
+        $hash = hash('sha256', $lowercase_string);
+
+        // 轉大寫
+        return strtoupper($hash);
     }
     
-    /**
-     * 驗證通知簽名
-     */
-    private function verifyNotificationSignature($data) {
-        $received_signature = $data['signature'] ?? '';
-        $calculated_signature = $this->generateSignature($data);
-        
-        return $received_signature === $calculated_signature;
-    }
     
     /**
      * 調用ANT API
      */
-    private function callApi($endpoint, $data) {
+    private function callApi($endpoint, $data, $method = 'POST') {
         $url = $this->api_base_url . $endpoint;
-        
-        // 使用cURL發送請求
+
         $ch = curl_init();
+
+        if ($method === 'GET') {
+            // GET請求，將資料附加到URL
+            if (!empty($data)) {
+                $query_string = http_build_query($data);
+                $url .= '?' . $query_string;
+            }
+            curl_setopt($ch, CURLOPT_HTTPGET, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'User-Agent: ANT-API-Client/1.0'
+            ]);
+        } else {
+            // POST請求
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                'Content-Type: application/json',
+                'User-Agent: ANT-API-Client/1.0'
+            ]);
+        }
+
         curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'User-Agent: ANT-API-Client/1.0'
-        ]);
         curl_setopt($ch, CURLOPT_TIMEOUT, 30);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, $this->is_production);
-        
+
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $error = curl_error($ch);
         curl_close($ch);
-        
+
         if ($error) {
             throw new Exception("API調用失敗: {$error}");
         }
-        
+
         if ($http_code !== 200) {
-            throw new Exception("API回應錯誤: HTTP {$http_code}");
+            throw new Exception("API回應錯誤: HTTP {$http_code} - Response: {$response}");
         }
-        
+
         $result = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new Exception("API回應格式錯誤");
+            throw new Exception("API回應格式錯誤: " . json_last_error_msg() . " - Response: {$response}");
         }
-        
+
         return $result;
     }
     
@@ -341,7 +258,7 @@ class ANTApiService {
         $log_data = [
             'timestamp' => date('Y-m-d H:i:s'),
             'method' => $method,
-            'merchant_id' => $this->merchant_id,
+            'username' => $this->username,
             'request' => $this->sanitizeLogData($request),
             'response' => $this->sanitizeLogData($response)
         ];
@@ -356,7 +273,7 @@ class ANTApiService {
         $log_data = [
             'timestamp' => date('Y-m-d H:i:s'),
             'method' => $method,
-            'merchant_id' => $this->merchant_id,
+            'username' => $this->username,
             'error' => $error,
             'data' => $this->sanitizeLogData($data)
         ];
@@ -370,7 +287,7 @@ class ANTApiService {
     private function sanitizeLogData($data) {
         if (is_array($data)) {
             // 隱藏敏感欄位
-            $sensitive_fields = ['signature', 'hash_key', 'hash_iv', 'user_bank_account'];
+            $sensitive_fields = ['sign', 'hash_key', 'hash_iv', 'user_bank_account', 'expected_banks'];
             foreach ($sensitive_fields as $field) {
                 if (isset($data[$field])) {
                     $data[$field] = '***HIDDEN***';

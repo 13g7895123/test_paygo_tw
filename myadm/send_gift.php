@@ -1,6 +1,6 @@
 <?include("include.php");
 
-// check_login();
+check_login_share();
   
 top_html();
 ?>

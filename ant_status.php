@@ -37,7 +37,7 @@
         <div class="credentials">
             <h3>🔐 使用的真實API憑證</h3>
             <p><strong>API網址:</strong> https://api.nubitya.com</p>
-            <p><strong>API Token:</strong> <?php echo substr('dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP', 0, 20); ?>...</p>
+            <p><strong>Username:</strong> antpay018</p>
             <p><strong>Hash Key:</strong> <?php echo substr('lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S', 0, 10); ?>...</p>
             <p><strong>Hash IV:</strong> <?php echo substr('yhncs1WpMo60azxEczokzIlVVvVuW69p', 0, 10); ?>...</p>
         </div>

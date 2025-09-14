@@ -363,15 +363,16 @@ function save_bank_funds($pdo, $server_id) {
             break;
             
         case 'ant':
-            $merchant_id = _r("MerchantID_bank");
+            $username = _r("username_bank");
             $hashkey = _r("HashKey_bank");
             $hashiv = _r("HashIV_bank");
-            
-            if(!empty($merchant_id)) {
+
+            if(!empty($username)) {
                 $bank_funds_data[] = [
                     'server_code' => $server_id,
                     'third_party_payment' => 'ant',
-                    'merchant_id' => $merchant_id,
+                    'merchant_id' => $username, // 使用 username 作為 merchant_id
+                    'username' => $username, // 新增 username 欄位
                     'hashkey' => $hashkey,
                     'hashiv' => $hashiv,
                     'verify_key' => null
@@ -413,8 +414,9 @@ function save_bank_funds($pdo, $server_id) {
             // 更新現有記錄
             error_log("Updating existing record ID: " . $existing['id']);
             $update_query = $pdo->prepare("
-                UPDATE bank_funds SET 
+                UPDATE bank_funds SET
                     merchant_id = :merchant_id,
+                    username = :username,
                     hashkey = :hashkey,
                     hashiv = :hashiv,
                     verify_key = :verify_key
@@ -422,6 +424,7 @@ function save_bank_funds($pdo, $server_id) {
             ");
             $update_query->bindValue(':id', $existing['id'], PDO::PARAM_INT);
             $update_query->bindValue(':merchant_id', $data['merchant_id'], PDO::PARAM_STR);
+            $update_query->bindValue(':username', $data['username'] ?? null, PDO::PARAM_STR);
             $update_query->bindValue(':hashkey', $data['hashkey'], PDO::PARAM_STR);
             $update_query->bindValue(':hashiv', $data['hashiv'], PDO::PARAM_STR);
             $update_query->bindValue(':verify_key', $data['verify_key'], PDO::PARAM_STR);
@@ -430,12 +433,13 @@ function save_bank_funds($pdo, $server_id) {
             // 插入新記錄
             error_log("Inserting new record");
             $insert_query = $pdo->prepare("
-                INSERT INTO bank_funds (server_code, third_party_payment, merchant_id, hashkey, hashiv, verify_key) 
-                VALUES (:server_code, :third_party_payment, :merchant_id, :hashkey, :hashiv, :verify_key)
+                INSERT INTO bank_funds (server_code, third_party_payment, merchant_id, username, hashkey, hashiv, verify_key)
+                VALUES (:server_code, :third_party_payment, :merchant_id, :username, :hashkey, :hashiv, :verify_key)
             ");
             $insert_query->bindValue(':server_code', $data['server_code'], PDO::PARAM_STR);
             $insert_query->bindValue(':third_party_payment', $data['third_party_payment'], PDO::PARAM_STR);
             $insert_query->bindValue(':merchant_id', $data['merchant_id'], PDO::PARAM_STR);
+            $insert_query->bindValue(':username', $data['username'] ?? null, PDO::PARAM_STR);
             $insert_query->bindValue(':hashkey', $data['hashkey'], PDO::PARAM_STR);
             $insert_query->bindValue(':hashiv', $data['hashiv'], PDO::PARAM_STR);
             $insert_query->bindValue(':verify_key', $data['verify_key'], PDO::PARAM_STR);
@@ -722,6 +726,7 @@ if(!empty($an = _r("an"))) {
         
         $bank_funds_js[$payment_type] = [
             'merchant_id' => $fund['merchant_id'],
+            'username' => $fund['username'] ?? null,
             'hashkey' => $fund['hashkey'],
             'hashiv' => $fund['hashiv'],
             'verify_key' => $fund['verify_key']
@@ -780,7 +785,7 @@ if(!empty($an = _r("an"))) {
                 break;
                 
             case 'ant':
-                $datalist['MerchantID_bank'] = $first_fund['merchant_id'];
+                $datalist['username_bank'] = $first_fund['username'] ?? $first_fund['merchant_id'];
                 $datalist['HashKey_bank'] = $first_fund['hashkey'];
                 $datalist['HashIV_bank'] = $first_fund['hashiv'];
                 break;
@@ -1070,11 +1075,11 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 
 <tr><td class="antdiv_bank">
 
-特店編號：<input name="MerchantID_bank" id="MerchantID_bank" type="text" value="<?=$datalist['MerchantID_bank']?>">&nbsp;&nbsp;
+使用者名稱：<input name="username_bank" id="username_bank" type="text" value="<?=$datalist['username_bank']?>">&nbsp;&nbsp;
 
-介接 HashKey：<input name="HashKey_bank" id="HashKey_bank" type="text" value="<?=$datalist['HashKey_bank']?>">&nbsp;&nbsp;
+介接 HashKey：<input name="HashKey_bank" id="ant_HashKey_bank" type="text" value="<?=$datalist['HashKey_bank']?>">&nbsp;&nbsp;
 
-介接 HashIV：<input name="HashIV_bank" id="HashIV_bank" type="text" value="<?=$datalist['HashIV_bank']?>">&nbsp;&nbsp;
+介接 HashIV：<input name="HashIV_bank" id="ant_HashIV_bank" type="text" value="<?=$datalist['HashIV_bank']?>">&nbsp;&nbsp;
 
 </td></tr>
 
@@ -1704,9 +1709,9 @@ function pay_check_bank() {
               break;
               
           case "ant":
-              $("#MerchantID_bank").val(fundData.merchant_id || '');
-              $("#HashKey_bank").val(fundData.hashkey || '');
-              $("#HashIV_bank").val(fundData.hashiv || '');
+              $("#username_bank").val(fundData.username || fundData.merchant_id || '');
+              $("#ant_HashKey_bank").val(fundData.hashkey || '');
+              $("#ant_HashIV_bank").val(fundData.hashiv || '');
               $(".antdiv_bank").show();
               break;
               
@@ -1753,15 +1758,17 @@ function pay_check_bank() {
 function clearBankFields() {
     // 清空所有銀行金流相關的輸入欄位
     $("#MerchantID_bank").val('');
+    $("#username_bank").val('');
     $("#HashKey_bank").val('');
     $("#HashIV_bank").val('');
+    $("#ant_HashKey_bank").val('');
+    $("#ant_HashIV_bank").val('');
     $("#gomypay_shop_id_bank").val('');
     $("#gomypay_key_bank").val('');
     $("#smilepay_shop_id_bank").val('');
     $("#smilepay_key_bank").val('');
     $("#szfupay_shop_id_bank").val('');
     $("#szfupay_key_bank").val('');
-    // ANT 欄位在 normaldiv_bank 中處理，不需要單獨清理
     $("#pchome_app_id_bank").val('');
     $("#pchome_secret_code_bank").val('');
 }

@@ -40,6 +40,31 @@ function api_success($data = null, $message = null) {
     exit();
 }
 
+// 權限檢查函數
+function check_server_permission($pdo, $server_id, $user_id = null, $is_admin = false) {
+    // 管理員有所有權限
+    if ($is_admin) {
+        return true;
+    }
+
+    // 分享用戶檢查 shareuser_server2 表
+    if ($user_id) {
+        $query = $pdo->prepare("
+            SELECT COUNT(*) as count
+            FROM servers s
+            INNER JOIN shareuser_server2 sus ON s.id = sus.serverid
+            WHERE s.auton = :server_id AND sus.uid = :user_id
+        ");
+        $query->bindParam(':server_id', $server_id);
+        $query->bindParam(':user_id', $user_id);
+        $query->execute();
+        $result = $query->fetch(PDO::FETCH_ASSOC);
+        return $result['count'] > 0;
+    }
+
+    return false;
+}
+
 // 取得請求方法和動作
 $method = $_SERVER['REQUEST_METHOD'];
 $action = isset($_GET['action']) ? $_GET['action'] : (isset($_POST['action']) ? $_POST['action'] : '');

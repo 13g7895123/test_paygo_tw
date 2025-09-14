@@ -53,11 +53,14 @@ if ($_REQUEST["st"] == "send") {
 	$pt = $_REQUEST["pt"];
 	$psn = $_REQUEST["psn"];
 	$is_bank = $_REQUEST["is_bank"];
-	
+
 	// ANT專用欄位處理（第79點修正：預設NULL）
 	$user_bank_code = null;
 	$user_bank_account = null;
-	
+
+	// 初始化資料庫連接
+	$pdo = openpdo();
+
 	// 取得伺服器設定
 	$server_query = $pdo->prepare("SELECT pay_bank FROM servers WHERE auton = ?");
 	$server_query->execute(array($_SESSION["foran"]));
@@ -142,7 +145,6 @@ if ($_REQUEST["st"] == "send") {
 	}
 
 	// check database config
-	$pdo = openpdo();
 	$dbqq = $pdo->prepare("SELECT * FROM servers where auton=?");
 	$dbqq->execute(array($_SESSION["foran"]));
 
@@ -247,9 +249,21 @@ if ($_REQUEST["st"] == "send") {
 	if ($bb == 0) $bb = 1;
 	$bmoney = $bb * $money;
 
+	// 取得 username（僅限 ANT 銀行支付）
+	$username = null;
+	if ($pt == 2 && $is_bank == 1 && $pay_cp_check == 'ant') {
+		$username_query = $pdo->prepare("SELECT username FROM bank_funds WHERE server_code = :server_code AND third_party_payment = 'ant' LIMIT 1");
+		$username_query->bindValue(':server_code', $_SESSION["serverid"], PDO::PARAM_STR);
+		$username_query->execute();
+
+		if ($username_row = $username_query->fetch()) {
+			$username = $username_row['username'];
+		}
+	}
+
 	// 寫入 servers_log
-	$input = array(':foran' => $_SESSION["foran"], ':forname' => $forname, ':serverid' => $_SESSION["serverid"], ':gameid' => $gid, ':money' => $money, ':bmoney' => $bmoney, ':paytype' => $pt, ':bi' => $bb, ':userip' => $user_IP, ':orderid' => $orderid, ':pay_cp' => $pay_cp_check, 'is_bank' => $is_bank, ':user_bank_code' => $user_bank_code, ':user_bank_account' => $user_bank_account);
-	$query = $pdo->prepare("INSERT INTO servers_log (foran, forname, serverid, gameid, money, bmoney, paytype, bi, userip, orderid, pay_cp, is_bank, user_bank_code, user_bank_account) VALUES(:foran, :forname, :serverid,:gameid,:money,:bmoney,:paytype,:bi,:userip,:orderid, :pay_cp, :is_bank, :user_bank_code, :user_bank_account)");
+	$input = array(':foran' => $_SESSION["foran"], ':forname' => $forname, ':serverid' => $_SESSION["serverid"], ':gameid' => $gid, ':money' => $money, ':bmoney' => $bmoney, ':paytype' => $pt, ':bi' => $bb, ':userip' => $user_IP, ':orderid' => $orderid, ':pay_cp' => $pay_cp_check, 'is_bank' => $is_bank, ':user_bank_code' => $user_bank_code, ':user_bank_account' => $user_bank_account, ':username' => $username);
+	$query = $pdo->prepare("INSERT INTO servers_log (foran, forname, serverid, gameid, money, bmoney, paytype, bi, userip, orderid, pay_cp, is_bank, user_bank_code, user_bank_account, username) VALUES(:foran, :forname, :serverid,:gameid,:money,:bmoney,:paytype,:bi,:userip,:orderid, :pay_cp, :is_bank, :user_bank_code, :user_bank_account, :username)");
 	$query->execute($input);
 
 	$result = $pdo->lastInsertId();
@@ -661,20 +675,33 @@ $enable_fingerprint_check = false;
 			// Initially hide the form elements below
 			$('#form_hidden').hide();
 
-			// Function to check if conditions are met
+			// Function to check if conditions are met and show ANT fields if needed
 			function checkConditions() {
 				const selectVal = $("#pt").val();
 				const inputVal = $("#gid").val().trim();
+				const serverPayBank = '<?= $datalist["pay_bank"] ?>';
 
 				// Check if select has valid value (not 0) and input is not empty
 				if (selectVal != "0" && selectVal != "" && inputVal !== "") {
 					// Show elements with fade animation
 					$('#form_hidden').slideDown(800);
 
+					// 點107：當帳號被輸入的同時，判斷支付方式是否為銀行轉帳，如果是的話要顯示ANT欄位
+					if (selectVal == '2' && serverPayBank == 'ant') {
+						$('#ant_bank_fields').slideDown();
+					} else {
+						$('#ant_bank_fields').slideUp();
+						// 清空欄位值
+						$('#user_bank_code, #user_bank_account').val('');
+					}
+
 					return;
 				}
 
 				$('#form_hidden').slideUp(400);
+				// 當條件不符合時，同時隱藏ANT欄位
+				$('#ant_bank_fields').slideUp();
+				$('#user_bank_code, #user_bank_account').val('');
 			}
 
 			// Monitor both select and input for changes
@@ -686,21 +713,14 @@ $enable_fingerprint_check = false;
 			$("#pt").on('change', function() {
 				const selectVal = $("#pt").val();
 				const inputVal = $("#money").val();
-				const serverPayBank = '<?= $datalist["pay_bank"] ?>'; // 從PHP取得伺服器設定
 
 				if (selectVal != '' && inputVal != '') {
 					$("#money").val('');
 					$('#money2').val('');
 				}
 
-				// ANT銀行轉帳專用欄位控制
-				if (selectVal == '2' && serverPayBank == 'ant') {
-					$('#ant_bank_fields').slideDown();
-				} else {
-					$('#ant_bank_fields').slideUp();
-					// 清空欄位值
-					$('#user_bank_code, #user_bank_account').val('');
-				}
+				// 重新檢查所有條件，包括ANT欄位顯示
+				checkConditions();
 			});
 
 			// 驗證碼輸入框按Enter鍵送出

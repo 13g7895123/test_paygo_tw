@@ -9,7 +9,14 @@
       "WebFetch(domain:documenter.getpostman.com)",
       "Bash(php:*)",
       "Bash(git push:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_evaluate",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_type",
+      "mcp__playwright__browser_select_option"
     ],
     "deny": [],
     "ask": []

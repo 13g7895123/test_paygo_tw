@@ -835,6 +835,12 @@ function pay_cp_name($n)
 
         break;
 
+        case "ant":
+
+            return "ANT";
+
+        break;
+
         case "no":
 
             return "無";

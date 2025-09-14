@@ -24,7 +24,7 @@ class ANTApiTester {
     private $timeout = 10;
 
     // 實際API憑證 (來自第85點)
-    private $api_token = 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP';
+    private $api_token = 'antpay018';
     private $hash_key = 'lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S';
     private $hash_iv = 'yhncs1WpMo60azxEczokzIlVVvVuW69p';
 

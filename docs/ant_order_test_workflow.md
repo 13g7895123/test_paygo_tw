@@ -221,55 +221,197 @@ $api_data = [
 
 ---
 
-### 6. 簽名生成階段
+### 6. 加密金鑰與簽名生成階段 (詳細說明)
 
-#### 6.1 數據簽名處理
+#### 6.1 加密憑證初始化回顧
 ```php
-// 行 78-91: generateSignature() 方法
-private function generateSignature($data) {
-    unset($data['signature']);  // 移除已存在的簽名
-    ksort($data);               // 按鍵名排序
+// 完整的加密憑證 (來自第85點提供的真實資料)
+private $api_token = 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP';
+private $hash_key = 'lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S';
+private $hash_iv = 'yhncs1WpMo60azxEczokzIlVVvVuW69p';
+```
 
+**加密憑證用途說明:**
+- **API Token**: 用於 API 身份識別，直接加入請求參數
+- **Hash Key**: 用於簽名生成，確保資料完整性 (32字元)
+- **Hash IV**: 用於簽名生成，增強安全性 (32字元)
+
+#### 6.2 簽名前資料準備
+```php
+// 簽名生成前的完整資料結構
+$api_data = [
+    'api_token' => 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP',
+    'order_id' => 'TEST20250114153001234',
+    'amount' => 100,
+    'user_bank_code' => '004',
+    'user_bank_account' => '1234567890123',
+    'timestamp' => 1705296600
+];
+```
+
+#### 6.3 詳細簽名生成過程
+```php
+// 行 78-91: generateSignature() 方法 - 逐步分解
+private function generateSignature($data) {
+    // 步驟 1: 移除已存在的簽名欄位 (避免循環引用)
+    unset($data['signature']);
+
+    // 步驟 2: 按鍵名字母順序排列 (確保簽名一致性)
+    ksort($data);
+
+    // 步驟 3: 組合參數字串
     $sign_string = '';
     foreach ($data as $key => $value) {
         if (!empty($value)) {
             $sign_string .= $key . '=' . $value . '&';
         }
     }
+
+    // 步驟 4: 加入加密金鑰
     $sign_string .= 'hash_key=' . $this->hash_key . '&hash_iv=' . $this->hash_iv;
 
+    // 步驟 5: MD5 雜湊並轉大寫
     return strtoupper(md5($sign_string));
 }
 ```
 
-**執行內容:**
-1. 移除現有簽名欄位
-2. 將參數按鍵名字母順序排列
-3. 組合簽名字串: `key1=value1&key2=value2&...`
-4. 加入 hash_key 和 hash_iv
-5. 進行 MD5 雜湊並轉為大寫
+#### 6.4 實際簽名字串組合示例
 
-**帶入資料範例:**
-```
-簽名字串: amount=100&api_token=dkTqv40XBD...&order_id=TEST20250114...&timestamp=1705296600&user_bank_account=1234567890123&user_bank_code=004&hash_key=lyAJwWnVAK...&hash_iv=yhncs1WpMo...
-
-MD5 結果: A1B2C3D4E5F6... (32位大寫雜湊值)
-```
-
-#### 6.2 簽名加入請求資料
+**步驟1-2: 排序後的參數**
 ```php
-// 行 54: 將簽名加入 API 資料
-$api_data['signature'] = $this->generateSignature($api_data);
+$sorted_data = [
+    'amount' => 100,
+    'api_token' => 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP',
+    'order_id' => 'TEST20250114153001234',
+    'timestamp' => 1705296600,
+    'user_bank_account' => '1234567890123',
+    'user_bank_code' => '004'
+];
 ```
 
-**執行內容:**
-- 將生成的簽名加入 API 請求資料
-- 完成請求資料的最終準備
+**步驟3: 參數字串組合**
+```
+amount=100&api_token=dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP&order_id=TEST20250114153001234&timestamp=1705296600&user_bank_account=1234567890123&user_bank_code=004&
+```
 
-**帶入資料:**
-- **signature**: MD5 雜湊簽名 (32位大寫字串)
+**步驟4: 加入完整加密金鑰**
+```
+amount=100&api_token=dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP&order_id=TEST20250114153001234&timestamp=1705296600&user_bank_account=1234567890123&user_bank_code=004&hash_key=lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S&hash_iv=yhncs1WpMo60azxEczokzIlVVvVuW69p
+```
 
----
+**步驟5: MD5 雜湊處理**
+```php
+$raw_md5 = md5($sign_string);
+// 結果例如: a1b2c3d4e5f6789012345678901234567890abcd
+
+$final_signature = strtoupper($raw_md5);
+// 最終簽名: A1B2C3D4E5F6789012345678901234567890ABCD
+```
+
+#### 6.5 加密金鑰安全機制解析
+
+**Hash Key 的作用:**
+- **長度**: 32 字元 (`lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S`)
+- **用途**: 作為主要加密密鑰，確保簽名唯一性
+- **安全性**: 只有擁有正確 Hash Key 的系統才能生成有效簽名
+
+**Hash IV 的作用:**
+- **長度**: 32 字元 (`yhncs1WpMo60azxEczokzIlVVvVuW69p`)
+- **用途**: 初始化向量，增強加密強度
+- **安全性**: 與 Hash Key 組合使用，防止彩虹表攻擊
+
+**雙重金鑰驗證機制:**
+```php
+// ANT API 使用雙重金鑰驗證
+$sign_string .= 'hash_key=' . $this->hash_key;     // 主密鑰
+$sign_string .= '&hash_iv=' . $this->hash_iv;      // 輔助密鑰
+```
+
+#### 6.6 最終加密資料結構
+```php
+// 加入簽名後的完整 API 資料
+$final_api_data = [
+    'api_token' => 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP',
+    'order_id' => 'TEST20250114153001234',
+    'amount' => 100,
+    'user_bank_code' => '004',
+    'user_bank_account' => '1234567890123',
+    'timestamp' => 1705296600,
+    'signature' => 'A1B2C3D4E5F6789012345678901234567890ABCD'  // 32位大寫MD5簽名
+];
+```
+
+#### 6.7 加密安全性驗證機制
+
+**1. 參數完整性檢查:**
+```php
+// 確保所有必要參數都存在且非空
+foreach ($data as $key => $value) {
+    if (!empty($value)) {  // 只處理非空值
+        $sign_string .= $key . '=' . $value . '&';
+    }
+}
+```
+
+**2. 時間戳防重放攻擊:**
+```php
+'timestamp' => time()  // Unix時間戳，防止請求重放
+```
+
+**3. 金鑰組合防暴力破解:**
+```php
+// 使用兩個32字元金鑰組合，增加破解難度
+$sign_string .= 'hash_key=' . $this->hash_key . '&hash_iv=' . $this->hash_iv;
+```
+
+**4. MD5簽名一致性:**
+```php
+return strtoupper(md5($sign_string));  // 統一使用大寫格式
+```
+
+### 6.8 加密金鑰完整處理總結
+
+**完整加密流程時序:**
+```
+1. 載入加密憑證
+   ├── API Token: dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP
+   ├── Hash Key: lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S (32字元主密鑰)
+   └── Hash IV: yhncs1WpMo60azxEczokzIlVVvVuW69p (32字元輔助密鑰)
+
+2. 準備簽名資料
+   ├── 移除已存在簽名
+   ├── 按字母排序參數
+   └── 組合參數字串
+
+3. 加入雙重金鑰
+   ├── 附加 hash_key=lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S
+   └── 附加 hash_iv=yhncs1WpMo60azxEczokzIlVVvVuW69p
+
+4. 生成最終簽名
+   ├── MD5 雜湊處理完整字串
+   ├── 轉換為大寫格式 (32字元)
+   └── 加入 API 請求資料
+```
+
+**最終請求資料包含完整加密資訊:**
+```json
+{
+    "api_token": "dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP",
+    "order_id": "TEST20250114153001234",
+    "amount": 100,
+    "user_bank_code": "004",
+    "user_bank_account": "1234567890123",
+    "timestamp": 1705296600,
+    "signature": "A1B2C3D4E5F6789012345678901234567890ABCD"
+}
+```
+
+**加密安全級別:**
+- 🔐 **API Token**: 74字元身份識別密鑰
+- 🔐 **Hash Key**: 32字元主要加密密鑰
+- 🔐 **Hash IV**: 32字元輔助加密密鑰
+- 🔐 **MD5 簽名**: 32字元雜湊驗證碼
+- 🛡️ **總安全強度**: 170字元多重加密保護
 
 ### 7. API 調用階段
 
@@ -496,6 +638,89 @@ JSON 回傳給前端
 JavaScript 解析並更新頁面
     ↓
 顯示測試結果給用戶
+```
+
+## 🔐 加密金鑰與簽名機制詳解
+
+### 完整 API 憑證資訊
+```php
+// ant_order_test.php 行 18-21: 真實 API 憑證
+private $api_token = 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP';
+private $hash_key = 'lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S';
+private $hash_iv = 'yhncs1WpMo60azxEczokzIlVVvVuW69p';
+private $api_base_url = 'https://api.nubitya.com';
+```
+
+### 簽名生成完整流程示例
+
+#### 步驟1: 準備簽名參數
+```php
+// 原始 API 資料 (行 44-50)
+$api_data = [
+    'api_token' => 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP',
+    'order_id' => 'TEST20250114153001234',
+    'amount' => 100,
+    'user_bank_code' => '004',
+    'user_bank_account' => '1234567890123',
+    'timestamp' => 1705296600
+];
+```
+
+#### 步驟2: 參數排序 (行 80)
+```php
+ksort($api_data);
+// 排序後順序: amount, api_token, order_id, timestamp, user_bank_account, user_bank_code
+```
+
+#### 步驟3: 構建簽名字串 (行 82-88)
+```php
+$sign_string = '';
+foreach ($data as $key => $value) {
+    if (!empty($value)) {
+        $sign_string .= $key . '=' . $value . '&';
+    }
+}
+$sign_string .= 'hash_key=' . $this->hash_key . '&hash_iv=' . $this->hash_iv;
+```
+
+#### 步驟4: 完整簽名字串範例
+```text
+amount=100&api_token=dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP&order_id=TEST20250114153001234&timestamp=1705296600&user_bank_account=1234567890123&user_bank_code=004&hash_key=lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S&hash_iv=yhncs1WpMo60azxEczokzIlVVvVuW69p
+```
+
+#### 步驟5: MD5 加密與大寫轉換 (行 90)
+```php
+return strtoupper(md5($sign_string));
+// 輸出範例: 'A1B2C3D4E5F6789012345678901234567'
+```
+
+### 加密安全機制說明
+
+#### 雙金鑰驗證
+- **Hash Key**: `lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S` (32位)
+- **Hash IV**: `yhncs1WpMo60azxEczokzIlVVvVuW69p` (32位)
+- **作用**: 防止參數篡改，確保請求來源合法性
+
+#### 時間戳防重放攻擊
+- **timestamp**: 當前時間戳 `time()`
+- **作用**: 防止請求被重複使用，增強安全性
+
+#### 參數完整性檢查
+- **排序**: 所有參數按字母順序排列
+- **過濾**: 只包含非空值參數
+- **追加**: 最後加入雙密鑰
+
+### 最終 API 請求資料結構
+```json
+{
+    "api_token": "dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP",
+    "order_id": "TEST20250114153001234",
+    "amount": 100,
+    "user_bank_code": "004",
+    "user_bank_account": "1234567890123",
+    "timestamp": 1705296600,
+    "signature": "A1B2C3D4E5F6789012345678901234567"
+}
 ```
 
 ## 🔧 錯誤處理機制

@@ -146,3 +146,36 @@ Hash iv :
 yhncs1WpMo60azxEczokzIlVVvVuW69p
 ，用這個進行開單測試
 86. 我用了你提供的網址，但是她一片空白，一樣是空的欸，請打開網頁來看確認有東西才代表完成
+87. 幫我撰寫完整的執行流程到/ant_order_test.php，每一部執行了哪些事情，帶入哪些資料，我沒有看到最後的加密金鑰與相關的資訊
+88. 我想問一下，你這篇寫的是真的有認真讀取https://documenter.getpostman.com/view/4494782/2sAYBSkDHS這份說明文件的嗎，幫我認真讀取後分析一下，需要哪些資訊才可以建立訂單，如果用playwright可以讀取嗎
+89. 請依據你讀取到的資訊幫我更新現有專案中，有關ant-pay的所有資訊
+90. 幫我確認一下對於原先的資料庫表格與欄位，有哪些要修改的，記錄下來，另外測試訂單的銀行代號幫我加入812台新銀行
+91. 派獎功能有動到嗎，沒有的話不要列入那個檔案，我要的是有異動的部分的SQL，你是不是沒有提供sql給我啊，請把改動的sql寫再一起，我要直接進資料庫改動
+92. API回應的部分，幫我多一個解析\u的代碼的結果
+93. username的部分幫我用這一個"antpay018"
+94. 幫我為銀行支付的功能撰寫一個頁面，裡面會有銀行支付的每一支API與各種情境的測試，點下去會帶入資料並測試API是否有通過各種情境的測試
+95. 目前看起來是有正常使用了，要麻煩確認server_add的頁面，原本有一個特店編號的部分，幫我改成使用者名稱，資料庫與欄位也要同步更新成username，銀行支付的表變成要多一個username，專門給這個支付使用，然後建立訂單的時候，也要抓username的欄位，幫我一併調整
+96. 檢查一下ant_api_service.php，檔案裡面有錯誤
+97. 針對94點的測試有錯誤
+{
+  "error": "Unexpected token '<', \"
+\n\"... is not valid JSON"
+}
+98. 有這個錯誤Uncaught ArgumentCountError: Too few arguments to function ANTApiService::__construct(), 0 passed in /www/wwwroot/test.paygo.tw/bank_payment_test_suite.php on line 45 and at least 2 expected in /www/wwwroot/test.paygo.tw/ant_api_service.php: 16 Stack trace: #0/www/wwwroot/test.paygo.tw/bank_payment_test_suite.php(45): ANTApiService-&gt;__construct()#1/www/wwwroot/test.paygo.tw/bank_payment_test_suite.php(572): BankPaymentTestSuite-&gt;__construct()#2{
+    main
+99. 測試的部分幫我看一下server_add的部分，我要各家三方金流針對銀行支付的測試
+100. 幫我view過整個系統，評估一下是否有辦法建置一個docker-compose環境，並且讓我在裡面執行相關測試
+101. 評估一下可否用playwright寫完整的流程測試，例如後台有一個專門測試用的伺服器，總共用三種支付方式，銀行、信用卡、超商，對應不同的第三方金流，可以透過參數設定playwright流程測試的時候，有哪些組合可以用，並且於測試時先確認要測試的組合，是否有資料不齊全的情況，如果都齊全，就完整跑過一輪，並於每個步驟截圖記錄，最後告知測試的情況與結果
+102. 幫我看一下send_gift手動派獎的功能，要下放給每一個服主都可以使用，不是只有admin才能用，幫我看一下要調整哪些地方，另外，需要確認他的伺服器只能看到自己有權限的，幫我針對這項改動view過整個專案，列出要調整的項目，寫入docs\gift_1758.md中
+103. 幫我確認一下第95項是否已經完成，我在server_add選ANT還是一樣看到特店編號
+104. 第77點的這一段"前台如果該伺服器是選用ANT，且玩家使用銀行轉帳的時候，要多出兩個欄位，讓使用者填入她的銀行代號與密碼"，檢查一下是不是沒有實作到，我目前開啟來測試是沒有多出兩個欄位的，請確認送出後會正確存到資料庫中，要使用的話請用https://test.paygo.tw/jt這個網址，你有正確變更嗎，他的路徑是index.php
+105. 點確定儲值後有錯誤，Uncaught Error: Call to a member function prepare() on null in /www/wwwroot/test.paygo.tw/index.php:6
+106. 我點了確定儲值後出現"API調用失敗: Could not resolve: api.ant-pay.com (Domain name not found)"，幫我分析這個錯誤是來自API還是CODE沒有寫好，請幫我看一下ant_order_test.php，因為這個測試頁的功能是好的，請確認兩邊邏輯是否一致，如果沒有一致，請依據ant_order_test.php修改，改好不用測試，請通知我即可
+107. index.php的部分，幫我加入判斷，如果帳號被輸入的同時，就要判斷支付方式是否為銀行轉帳，如果是的話要顯示欄位
+108. 我看到ant_next.php有先打api執行validateBankAccount，幫我確認ant_order_test.php有沒有使用到，我看API文件中根本也沒這支API，請確認是否為你自己加上去的，如果是的話請幫我移除，並view過後續的步驟，如果還有自己加上去的，且ant_order_test.php沒有的，請通通移除
+109. ant_next.php中的參數，請使用資料庫的參數，並且，如果建立訂單完成，請參照funpoint_payok.php，應該要跳轉到對應的payok頁面中，並且顯示對應的銀行帳號資訊才對
+110. 幫我比對一下funpoint_payok.php與ant_payok.php，顯示上差異蠻大的，請與funpoint_payok.php一樣即可
+111. /myadm/list這一頁會顯示送出後的資料，幫我確認一下，金流要有正確的名稱，並且，狀態不應該是付款完成，幫我確認一下
+112. 幫我參考ebpay_next.php，並查閱index.php，在首頁確定儲值後，ant-pay送出的資料狀態應該與他一樣，我目前看到的是，送出後，後台訂單直接顯示完成，明顯是錯誤的
+113. 查閱一下/myadm/list這一頁，訂單送出後，會進入等待付款與模擬付款的狀態，幫我確認一下ant-pay在這一段是否有少甚麼，如果有少的話請幫我補上
+114. ant_next.php這一頁，如果有出錯的話，請直接跳出提示視窗，印出錯誤的訊息後，有一個確認按鈕，點下去返回上一頁

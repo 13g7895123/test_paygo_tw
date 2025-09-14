@@ -73,7 +73,8 @@ function searching(){
                 break;
 
                 case 1:
-                $stats = '<span class="label label-success">付款完成</span>';                
+                $stats = '<span class="label label-success">付款完成</span>';
+                if ($datainfo["RtnMsg"] == "模擬付款成功") $stats = '<span class="label label-info">模擬付款完成</span>';
                 $mockPay = "";
                 break;
                 
@@ -83,9 +84,9 @@ function searching(){
                 break;
 
                 case 3:
-                    $stats = '<span class="label label-info">模擬付款完成</span>';
-                    $mockPay = "";
-                    break;
+                $stats = '<span class="label label-info">模擬付款完成</span>';
+                $mockPay = "";
+                break;
 
                 default:
                 $stats = "不明";
@@ -168,6 +169,11 @@ function delete_recycle(){
                 case 2:
                 $stats = '<span class="label label-danger">付款失敗</span>';
                 $mockPay = '<a href="javascript:mockPay(\''.$datainfo["auton"].'\');" class="btn btn-warning btn-xs">模擬付款</a>';
+                break;
+
+                case 3:
+                $stats = '<span class="label label-info">模擬付款完成</span>';
+                $mockPay = "";
                 break;
 
                 default:

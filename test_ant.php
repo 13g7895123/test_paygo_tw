@@ -40,7 +40,7 @@
         <div class="credentials">
             <h3>🔐 API測試憑證</h3>
             <p><strong>API網址:</strong> https://api.nubitya.com</p>
-            <p><strong>API Token:</strong> dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP</p>
+            <p><strong>Username:</strong> antpay018</p>
             <p><strong>Hash Key:</strong> lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S</p>
             <p><strong>Hash IV:</strong> yhncs1WpMo60azxEczokzIlVVvVuW69p</p>
         </div>
