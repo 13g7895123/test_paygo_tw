@@ -39,12 +39,13 @@ if (!$server_data) {
 $payment_info = getSpecificBankPaymentInfo($pdo, $order_data['auton'], 'ant');
 
 if ($payment_info && isset($payment_info['payment_config'])) {
-    $ant_shop_id = $payment_info['payment_config']['merchant_id'];
-    $ant_key = $payment_info['payment_config']['verify_key'];
+    $ant_merchant_id = $payment_info['payment_config']['merchant_id'];
+    $ant_hashkey = $payment_info['payment_config']['hashkey'];
+    $ant_hashiv = $payment_info['payment_config']['hashiv'];
     $is_production = ($payment_info['server_info']['gstats_bank'] == 1);
-    
+
     // 初始化ANT API服務並查詢最新狀態
-    $ant_api = new ANTApiService($ant_shop_id, $ant_key, $is_production);
+    $ant_api = new ANTApiService($ant_merchant_id, $ant_hashkey, $ant_hashiv, $is_production);
     $status_result = $ant_api->queryPaymentStatus($order_id);
     
     if ($status_result['success']) {

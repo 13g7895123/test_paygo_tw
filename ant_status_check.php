@@ -40,12 +40,13 @@ try {
         throw new Exception("ANT設定錯誤");
     }
     
-    $ant_shop_id = $payment_info['payment_config']['merchant_id'];
-    $ant_key = $payment_info['payment_config']['verify_key'];
+    $ant_merchant_id = $payment_info['payment_config']['merchant_id'];
+    $ant_hashkey = $payment_info['payment_config']['hashkey'];
+    $ant_hashiv = $payment_info['payment_config']['hashiv'];
     $is_production = ($payment_info['server_info']['gstats_bank'] == 1);
-    
+
     // 初始化ANT API服務
-    $ant_api = new ANTApiService($ant_shop_id, $ant_key, $is_production);
+    $ant_api = new ANTApiService($ant_merchant_id, $ant_hashkey, $ant_hashiv, $is_production);
     
     // 查詢ANT支付狀態
     $status_result = $ant_api->queryPaymentStatus($order_id);

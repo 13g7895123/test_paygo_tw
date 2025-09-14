@@ -7,21 +7,22 @@ class ANTApiService {
     
     private $merchant_id;
     private $ant_key;
+    private $hash_iv;
     private $is_production;
     private $api_base_url;
     
     /**
      * 建構子
      */
-    public function __construct($merchant_id, $ant_key, $is_production = false) {
-        $this->merchant_id = $merchant_id;
-        $this->ant_key = $ant_key;
+    public function __construct($merchant_id = null, $ant_key = null, $is_production = false) {
+        // 使用提供的真實憑證
+        $this->merchant_id = $merchant_id ?: 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP';
+        $this->ant_key = $ant_key ?: 'lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S';
+        $this->hash_iv = 'yhncs1WpMo60azxEczokzIlVVvVuW69p'; // 新增hash_iv屬性
         $this->is_production = $is_production;
-        
-        // 設定API基礎URL (待確認實際端點)
-        $this->api_base_url = $is_production 
-            ? 'https://api.ant-pay.com' // 正式環境
-            : 'https://test-api.ant-pay.com'; // 測試環境
+
+        // 設定API基礎URL
+        $this->api_base_url = 'https://api.nubitya.com';
     }
     
     /**
@@ -264,10 +265,10 @@ class ANTApiService {
     private function generateSignature($data) {
         // 移除signature欄位
         unset($data['signature']);
-        
+
         // 按鍵名排序
         ksort($data);
-        
+
         // 組合簽名字串
         $sign_string = '';
         foreach ($data as $key => $value) {
@@ -275,10 +276,10 @@ class ANTApiService {
                 $sign_string .= $key . '=' . $value . '&';
             }
         }
-        
-        // 加入密鑰
-        $sign_string .= 'key=' . $this->ant_key;
-        
+
+        // 加入密鑰和IV
+        $sign_string .= 'hash_key=' . $this->ant_key . '&hash_iv=' . $this->hash_iv;
+
         // 生成MD5簽名
         return strtoupper(md5($sign_string));
     }
@@ -369,7 +370,7 @@ class ANTApiService {
     private function sanitizeLogData($data) {
         if (is_array($data)) {
             // 隱藏敏感欄位
-            $sensitive_fields = ['signature', 'ant_key', 'user_bank_account'];
+            $sensitive_fields = ['signature', 'hash_key', 'hash_iv', 'user_bank_account'];
             foreach ($sensitive_fields as $field) {
                 if (isset($data[$field])) {
                     $data[$field] = '***HIDDEN***';

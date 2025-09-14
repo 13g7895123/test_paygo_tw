@@ -7,7 +7,9 @@
       "Bash(php -l:*)",
       "Bash(find:*)",
       "WebFetch(domain:documenter.getpostman.com)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []

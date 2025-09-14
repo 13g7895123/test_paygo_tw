@@ -32,8 +32,9 @@ if ($paytype == 2) {	// 銀行轉帳
     $payment_info = getSpecificBankPaymentInfo($pdo, $_SESSION["lastan"], 'ant');
     
     if ($payment_info && isset($payment_info['payment_config'])) {
-        $ant_shop_id = $payment_info['payment_config']['merchant_id'];
-        $ant_key = $payment_info['payment_config']['verify_key'];
+        $ant_merchant_id = $payment_info['payment_config']['merchant_id'];
+        $ant_hashkey = $payment_info['payment_config']['hashkey'];
+        $ant_hashiv = $payment_info['payment_config']['hashiv'];
         
         // 確認使用者銀行資訊存在
         if (empty($user_bank_code) || empty($user_bank_account)) {
@@ -42,7 +43,7 @@ if ($paytype == 2) {	// 銀行轉帳
         
         try {
             // 初始化ANT API服務
-            $ant_api = new ANTApiService($ant_shop_id, $ant_key, ($gstats_bank == 1));
+            $ant_api = new ANTApiService($ant_merchant_id, $ant_hashkey, $ant_hashiv, ($gstats_bank == 1));
             
             // 1. 先驗證銀行帳戶
             $validation_result = $ant_api->validateBankAccount($user_bank_code, $user_bank_account);

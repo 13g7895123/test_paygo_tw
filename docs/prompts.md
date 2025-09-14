@@ -137,3 +137,12 @@
 81. https://documenter.getpostman.com/view/4494782/2sAYBSkDHS#3fcfc44b-0c39-4b7a-b3a5-678a105437e5，API說明網址如上，先幫我規劃出功能項目，寫入docs\ant-api.md
 82. 依據docs\ant-api.md的規劃實作API的功能部分，這個資料庫沒有對外，請問你是要測試甚麼
 83. 幫我調整一下，ant-api的callback可以幫我用另一張表紀錄server_log寫入嗎，我不想要再加在server_log裡面
+84. 幫我閱讀有關ant-api的所有檔案，server_add的部分使用了shop_id與verify_code，但實際上它應該是HashIV與HashKey才對，幫我列出所有要修正的地方並進行修改，用zh-tw回覆
+85. api要串接的網址為https://api.nubitya.com，幫我先寫一支API，用於測試使用，我要確認API是可以運行的，我是要測試你寫的是否可以運行打API功能是否可以運行，他提供了三項資訊如下，Api token : 
+dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP  
+Hash key : 
+lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S 
+Hash iv :
+yhncs1WpMo60azxEczokzIlVVvVuW69p
+，用這個進行開單測試
+86. 我用了你提供的網址，但是她一片空白，一樣是空的欸，請打開網頁來看確認有東西才代表完成

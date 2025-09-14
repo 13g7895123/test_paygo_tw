@@ -363,17 +363,18 @@ function save_bank_funds($pdo, $server_id) {
             break;
             
         case 'ant':
-            $merchant_id = _r("ant_shop_id_bank");
-            $verify_key = _r("ant_key_bank");
+            $merchant_id = _r("MerchantID_bank");
+            $hashkey = _r("HashKey_bank");
+            $hashiv = _r("HashIV_bank");
             
             if(!empty($merchant_id)) {
                 $bank_funds_data[] = [
                     'server_code' => $server_id,
                     'third_party_payment' => 'ant',
                     'merchant_id' => $merchant_id,
-                    'hashkey' => null,
-                    'hashiv' => null,
-                    'verify_key' => $verify_key
+                    'hashkey' => $hashkey,
+                    'hashiv' => $hashiv,
+                    'verify_key' => null
                 ];
             }
             break;
@@ -779,8 +780,9 @@ if(!empty($an = _r("an"))) {
                 break;
                 
             case 'ant':
-                $datalist['ant_shop_id_bank'] = $first_fund['merchant_id'];
-                $datalist['ant_key_bank'] = $first_fund['verify_key'];
+                $datalist['MerchantID_bank'] = $first_fund['merchant_id'];
+                $datalist['HashKey_bank'] = $first_fund['hashkey'];
+                $datalist['HashIV_bank'] = $first_fund['hashiv'];
                 break;
                 
             case 'pchome':
@@ -1068,9 +1070,11 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 
 <tr><td class="antdiv_bank">
 
-ANT 商店代號：<input name="ant_shop_id_bank" id="ant_shop_id_bank" type="text" value="<?=$datalist['ant_shop_id_bank']?>">&nbsp;&nbsp;
+特店編號：<input name="MerchantID_bank" id="MerchantID_bank" type="text" value="<?=$datalist['MerchantID_bank']?>">&nbsp;&nbsp;
 
-ANT 檢查碼：<input name="ant_key_bank" id="ant_key_bank" type="text" value="<?=$datalist['ant_key_bank']?>">
+介接 HashKey：<input name="HashKey_bank" id="HashKey_bank" type="text" value="<?=$datalist['HashKey_bank']?>">&nbsp;&nbsp;
+
+介接 HashIV：<input name="HashIV_bank" id="HashIV_bank" type="text" value="<?=$datalist['HashIV_bank']?>">&nbsp;&nbsp;
 
 </td></tr>
 
@@ -1700,8 +1704,9 @@ function pay_check_bank() {
               break;
               
           case "ant":
-              $("#ant_shop_id_bank").val(fundData.merchant_id || '');
-              $("#ant_key_bank").val(fundData.verify_key || '');
+              $("#MerchantID_bank").val(fundData.merchant_id || '');
+              $("#HashKey_bank").val(fundData.hashkey || '');
+              $("#HashIV_bank").val(fundData.hashiv || '');
               $(".antdiv_bank").show();
               break;
               
@@ -1756,8 +1761,7 @@ function clearBankFields() {
     $("#smilepay_key_bank").val('');
     $("#szfupay_shop_id_bank").val('');
     $("#szfupay_key_bank").val('');
-    $("#ant_shop_id_bank").val('');
-    $("#ant_key_bank").val('');
+    // ANT 欄位在 normaldiv_bank 中處理，不需要單獨清理
     $("#pchome_app_id_bank").val('');
     $("#pchome_secret_code_bank").val('');
 }
