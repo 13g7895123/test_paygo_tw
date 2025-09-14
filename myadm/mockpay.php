@@ -18,7 +18,7 @@ $qq    = $pdo->query("SELECT * FROM servers_log where auton=".$an."");
 
 if(!$datainfo = $qq->fetch()) alert("讀取失敗。", "close");
 
-if ($datainfo["stats"] != 0 && $datainfo["stats"] != 2) alert("付款狀態不符。", "close");
+if ($datainfo["stats"] != 0) alert("付款狀態不符。", "close");
 
 
 
@@ -214,9 +214,43 @@ switch ($datainfo["pay_cp"]) {
       $endstr = 1;
     break;
 
+    case "ant":
+
+      // ANT支付
+
+      $tourl = "ant_callback.php";
+
+      $params = [
+
+          'partner_number' => $datainfo["orderid"],
+
+          'number' => 'ANT' . time() . rand(1000, 9999), // 模擬ANT訂單編號
+
+          'status' => 4,                    // ANT狀態4 = 已完成
+
+          'amount' => $datainfo["money"],
+
+          'pay_amount' => $datainfo["money"],
+
+          'user_bank_code' => $datainfo["user_bank_code"] ?? '812',
+
+          'user_bank_account' => $datainfo["user_bank_account"] ?? 'mock_account',
+
+          'pay_time' => $nowtime,
+
+          'sign' => 'system_mock_signature',  // 模擬簽名
+
+          'remark' => '模擬付款成功'
+
+      ];
+
+      $endstr = "OK";  // ANT callback 期望的回應
+
+    break;
+
     default:
 
-        
+
 
     break;
 

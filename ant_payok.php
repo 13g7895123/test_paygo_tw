@@ -123,24 +123,6 @@ if(!$MerchantTradeNo) alert("資料錯誤-8000301。", 0);
 				echo "</div>";
 			}
 
-			// 狀態檢查腳本
-			echo "<script>";
-			echo "var orderCheckInterval = setInterval(function() {";
-			echo "  fetch('ant_status_check.php?order_id=" . urlencode($sqd["orderid"]) . "')";
-			echo "    .then(response => response.json())";
-			echo "    .then(data => {";
-			echo "      if (data.status === 'completed') {";
-			echo "        clearInterval(orderCheckInterval);";
-			echo "        alert('付款完成！頁面即將重新載入。');";
-			echo "        location.reload();";
-			echo "      } else if (data.status === 'failed') {";
-			echo "        clearInterval(orderCheckInterval);";
-			echo "        alert('付款失敗，請聯絡客服。');";
-			echo "      }";
-			echo "    })";
-			echo "    .catch(error => console.log('Status check error:', error));";
-			echo "}, 10000);"; // 每10秒檢查一次
-			echo "</script>";
 		} else {
 			echo "<div style='color: red;'>不支援的付款方式</div>";
 		}

@@ -192,7 +192,7 @@ top_html();
 									
 									case 2:
 									$stats = '<span class="label label-danger">付款失敗</span>';
-									$mockPay = '<a href="javascript:mockPay(\''.$datainfo["auton"].'\');" class="btn btn-warning btn-xs">模擬付款</a>';
+									$mockPay = "";
 									break;
 
 									default:

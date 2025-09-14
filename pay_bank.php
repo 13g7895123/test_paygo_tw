@@ -41,7 +41,7 @@ function getBankPaymentInfo($pdo, $servers_log_auton) {
         
         // 查詢 bank_funds 取得銀行支付設定
         $bank_query = $pdo->prepare("
-            SELECT third_party_payment, merchant_id, hashkey, hashiv, verify_key
+            SELECT third_party_payment, merchant_id, username, hashkey, hashiv, verify_key
             FROM bank_funds 
             WHERE server_code = :server_code
         ");
@@ -80,6 +80,7 @@ function getBankPaymentInfo($pdo, $servers_log_auton) {
             $result['bank_funds'][$fund['third_party_payment']] = [
                 'payment_type' => $fund['third_party_payment'],
                 'merchant_id' => $fund['merchant_id'],
+                'username' => $fund['username'],
                 'hashkey' => $fund['hashkey'],
                 'hashiv' => $fund['hashiv'],
                 'verify_key' => $fund['verify_key']

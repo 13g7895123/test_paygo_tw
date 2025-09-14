@@ -80,7 +80,7 @@ function searching(){
                 
                 case 2:
                 $stats = '<span class="label label-danger">付款失敗</span>';
-                $mockPay = '<a href="javascript:mockPay(\''.$datainfo["auton"].'\');" class="btn btn-warning btn-xs">模擬付款</a>';
+                $mockPay = "";
                 break;
 
                 case 3:
@@ -168,7 +168,7 @@ function delete_recycle(){
                 
                 case 2:
                 $stats = '<span class="label label-danger">付款失敗</span>';
-                $mockPay = '<a href="javascript:mockPay(\''.$datainfo["auton"].'\');" class="btn btn-warning btn-xs">模擬付款</a>';
+                $mockPay = "";
                 break;
 
                 case 3:

@@ -178,4 +178,22 @@ yhncs1WpMo60azxEczokzIlVVvVuW69p
 111. /myadm/list這一頁會顯示送出後的資料，幫我確認一下，金流要有正確的名稱，並且，狀態不應該是付款完成，幫我確認一下
 112. 幫我參考ebpay_next.php，並查閱index.php，在首頁確定儲值後，ant-pay送出的資料狀態應該與他一樣，我目前看到的是，送出後，後台訂單直接顯示完成，明顯是錯誤的
 113. 查閱一下/myadm/list這一頁，訂單送出後，會進入等待付款與模擬付款的狀態，幫我確認一下ant-pay在這一段是否有少甚麼，如果有少的話請幫我補上
-114. ant_next.php這一頁，如果有出錯的話，請直接跳出提示視窗，印出錯誤的訊息後，有一個確認按鈕，點下去返回上一頁
+114. ant_next.php這一頁，如果有出錯的話，請直接跳出提示視窗，印出錯誤的訊息後，有一個確認按鈕，點下去返回上一頁，請解讀message並顯示正確的文字，幫我針對上一次的改動調整，我只要回傳的message訊息不要再顯示\u開頭的編碼就好，抱錯了，ant_next.php:1 Uncaught SyntaxError: Invalid or unexpected token (at ant_next.php:1:85)，一樣的錯誤，不用幫我測試，修復好即可，你在幹嘛，不要隨便用playwright
+115. ant_next.php這一頁，如果有出錯的話，請直接跳出提示視窗，印出回傳的message，他會是\u的編碼，轉成正常的中文並顯示，有一個確認按鈕，點下去返回上一頁，不用幫我測試，修復好即可
+116. 幫我看完完整的專案，研究一下ebpay的模擬付款，實作antpay的模擬付款，請從list開始找起，因為模擬付款的按鈕在這裡
+117. 他都寫付款狀態不符，請幫我檢查
+118. ant_next的錯誤訊息為甚麼第12行要json_encode，錯了吧，解析完顯示正常中文應該就可以了吧
+119. 幫我檢測一下，/myadm/list這一頁，如果付款失敗，請不要顯示模擬付款的按鈕，另外，檢查一下ant-pay的callback為甚麼出錯了，我接收回來的訂單，狀態直接變成付款失敗了，需要確認一下，callback接api的回傳值有沒有存入資料庫中
+120. ant_callback中54~65行，請全部資料來自資料庫，另外為甚麼會有merchant_id，他不是應該撈回username嗎，再來，不要給我用預設值，缺資料就直接顯示錯誤就好
+121. 為甚麼/myadm/list的付款失敗還是有模擬付款的按鈕
+122. 幫我重新確認一次模擬付款，他現在會出現參數錯誤，現在變成付款狀態不符了，但是跳出錯誤後，狀態還是被更新了，請確認無誤後才更新訂單狀態
+123. 確認一下ant_callback，對方打完ant_callback後沒有存入付款日期，狀態也變成付款失敗，幫我確認原因
+124. 模擬付款錯誤，出現"模擬付款失敗。ERROR: ANT設定錯誤：缺少username參數"
+125. 承123，需要同步研究/myadm/list，看是甚麼樣的狀態才會顯示付款完成，已確認callback要寫入的資料是對的
+126. 寫一支api，我要測試"$payment_info = getSpecificBankPaymentInfo($pdo, $order_data['auton'], 'ant');"這一行的資料會取得甚麼，幫我引入需要的檔案
+127. 我用test_payment_info.php，報了這個錯，"請求失敗：Unexpected token 
+128. 調整getSpecificBankPaymentInfo這支function，在ant輸出的時候
+129. 查詢一下ebpay_r.php執行的所有動作，回頭檢視ant_callback是否有哪些沒有更新到資料
+130. 我是要你參考他，並依據API文件調整，你改完後paytimes沒寫入RtnMsg也沒寫入，到底在幹嘛
+131. 幫我調整一下ant_callback，回傳的status如果為4，server_logs的Rtn_msg填入交易成功，Rtn_code填入1
+132. ant_callback的114行，為甚麼要簽名驗證，不會再用到API的資料了，不用簽名驗證
