@@ -1,0 +1,539 @@
+# ANT API 開單測試工具 (ant_order_test.php) - 完整執行流程
+
+## 概述
+`ant_order_test.php` 是一個完整的 ANT API 開單測試工具，使用真實 API 憑證進行測試，解決了第85-86點的需求。
+
+## 系統架構
+- **前端**: HTML + CSS + JavaScript (響應式設計)
+- **後端**: PHP 類別化設計
+- **API**: RESTful 風格，支援 JSON 格式
+- **目標 API**: https://api.nubitya.com
+
+---
+
+## 📋 完整執行流程
+
+### 1. 系統初始化階段
+
+#### 1.1 頁面載入與環境檢查
+```php
+// 檔案: ant_order_test.php (行 7-10)
+if (isset($_GET['action']) && in_array($_GET['action'], ['create_order', 'validate_bank'])) {
+    header('Content-Type: application/json; charset=utf-8');
+}
+```
+
+**執行內容:**
+- 檢查是否為 API 請求
+- 如果是 API 請求，設置 JSON Content-Type header
+- 如果是一般頁面訪問，使用預設 HTML header
+
+**帶入資料:**
+- `$_GET['action']`: 動作參數 ('create_order' 或 'validate_bank')
+
+#### 1.2 API 憑證初始化
+```php
+// ANTOrderTester 類別初始化 (行 15-22)
+class ANTOrderTester {
+    private $api_token = 'dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP';
+    private $hash_key = 'lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S';
+    private $hash_iv = 'yhncs1WpMo60azxEczokzIlVVvVuW69p';
+    private $api_base_url = 'https://api.nubitya.com';
+    private $timeout = 30;
+}
+```
+
+**執行內容:**
+- 載入真實 API 憑證 (第85點提供)
+- 設定 API 基礎網址
+- 配置連線超時時間
+
+**帶入資料:**
+- **API Token**: `dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP`
+- **Hash Key**: `lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S`
+- **Hash IV**: `yhncs1WpMo60azxEczokzIlVVvVuW69p`
+
+---
+
+### 2. 前端頁面顯示階段
+
+#### 2.1 HTML 頁面渲染
+```html
+<!-- 行 152-339: 完整 HTML 結構 -->
+<div class="container">
+    <h1>🚀 ANT API 開單測試工具</h1>
+    <!-- 狀態提示、憑證顯示、測試按鈕等 -->
+</div>
+```
+
+**執行內容:**
+- 渲染響應式網頁介面
+- 顯示 API 憑證資訊 (部分隱藏)
+- 載入測試按鈕和狀態區域
+
+**帶入資料:**
+- 當前時間戳: `<?php echo date('Y-m-d H:i:s'); ?>`
+- API 憑證預覽 (前20/10字元)
+
+#### 2.2 JavaScript 初始化
+```javascript
+// 行 285-336: 前端 JavaScript
+console.log('✅ ANT測試頁面載入成功');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎉 頁面完全載入完成，所有功能就緒');
+});
+```
+
+**執行內容:**
+- 確認 JavaScript 環境正常
+- 註冊事件監聽器
+- 準備 AJAX 功能
+
+---
+
+### 3. 用戶操作觸發階段
+
+#### 3.1 用戶點擊「開始開單測試」按鈕
+```javascript
+// 行 290-331: testCreateOrder() 函數
+async function testCreateOrder() {
+    const button = event.target;
+    const loading = document.getElementById('loading');
+    const resultDiv = document.getElementById('result');
+
+    // 按鈕狀態更新
+    button.disabled = true;
+    button.textContent = '測試中...';
+    loading.style.display = 'block';
+}
+```
+
+**執行內容:**
+- 禁用測試按鈕防止重複點擊
+- 顯示載入狀態
+- 隱藏之前的結果
+
+**帶入資料:**
+- 按鈕 DOM 元素
+- 載入指示器 DOM 元素
+- 結果顯示區域 DOM 元素
+
+---
+
+### 4. API 請求處理階段
+
+#### 4.1 前端發送 AJAX 請求
+```javascript
+// 行 301: 發送請求到後端 API
+const response = await fetch('?action=create_order');
+const data = await response.json();
+```
+
+**執行內容:**
+- 使用 Fetch API 發送 GET 請求
+- 帶上 `action=create_order` 參數
+- 等待伺服器回應 JSON 格式資料
+
+**帶入資料:**
+- URL 參數: `?action=create_order`
+
+#### 4.2 後端 PHP 處理請求
+```php
+// 行 129-148: 請求分發處理
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action'])) {
+    $tester = new ANTOrderTester();
+
+    switch ($_GET['action']) {
+        case 'create_order':
+            $result = $tester->createTestOrder();
+            echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+            exit;
+    }
+}
+```
+
+**執行內容:**
+- 檢查 HTTP 方法為 GET
+- 創建 ANTOrderTester 實例
+- 調用 `createTestOrder()` 方法
+- 將結果轉為 JSON 格式輸出
+
+**帶入資料:**
+- `$_SERVER['REQUEST_METHOD']`: 'GET'
+- `$_GET['action']`: 'create_order'
+
+---
+
+### 5. 測試資料準備階段
+
+#### 5.1 生成測試訂單資料
+```php
+// 行 27-37: createTestOrder() 方法
+$default_data = [
+    'order_id' => 'TEST' . date('YmdHis') . rand(1000, 9999),
+    'amount' => 100,
+    'user_bank_code' => '004', // 台灣銀行
+    'user_bank_account' => '1234567890123',
+    'description' => 'ANT API 開單測試'
+];
+
+$order_data = array_merge($default_data, $test_data ?: []);
+```
+
+**執行內容:**
+- 生成唯一的測試訂單編號
+- 設定固定的測試金額 (100元)
+- 使用台灣銀行代號 (004)
+- 生成測試用銀行帳號
+
+**帶入資料:**
+- **訂單編號**: `TEST + YmdHis + 隨機4位數` (例: TEST202501141530001234)
+- **金額**: `100` (整數)
+- **銀行代號**: `004` (台灣銀行)
+- **銀行帳號**: `1234567890123` (測試用)
+- **描述**: `ANT API 開單測試`
+
+#### 5.2 準備 API 請求資料
+```php
+// 行 43-51: API 請求資料準備
+$api_data = [
+    'api_token' => $this->api_token,
+    'order_id' => $order_data['order_id'],
+    'amount' => $order_data['amount'],
+    'user_bank_code' => $order_data['user_bank_code'],
+    'user_bank_account' => $order_data['user_bank_account'],
+    'timestamp' => time()
+];
+```
+
+**執行內容:**
+- 組裝 ANT API 所需的請求參數
+- 加入時間戳記防止重放攻擊
+- 準備簽名生成所需資料
+
+**帶入資料:**
+- **api_token**: 完整 API Token
+- **order_id**: 生成的測試訂單號
+- **amount**: 100
+- **user_bank_code**: 004
+- **user_bank_account**: 1234567890123
+- **timestamp**: Unix 時間戳 (例: 1705296600)
+
+---
+
+### 6. 簽名生成階段
+
+#### 6.1 數據簽名處理
+```php
+// 行 78-91: generateSignature() 方法
+private function generateSignature($data) {
+    unset($data['signature']);  // 移除已存在的簽名
+    ksort($data);               // 按鍵名排序
+
+    $sign_string = '';
+    foreach ($data as $key => $value) {
+        if (!empty($value)) {
+            $sign_string .= $key . '=' . $value . '&';
+        }
+    }
+    $sign_string .= 'hash_key=' . $this->hash_key . '&hash_iv=' . $this->hash_iv;
+
+    return strtoupper(md5($sign_string));
+}
+```
+
+**執行內容:**
+1. 移除現有簽名欄位
+2. 將參數按鍵名字母順序排列
+3. 組合簽名字串: `key1=value1&key2=value2&...`
+4. 加入 hash_key 和 hash_iv
+5. 進行 MD5 雜湊並轉為大寫
+
+**帶入資料範例:**
+```
+簽名字串: amount=100&api_token=dkTqv40XBD...&order_id=TEST20250114...&timestamp=1705296600&user_bank_account=1234567890123&user_bank_code=004&hash_key=lyAJwWnVAK...&hash_iv=yhncs1WpMo...
+
+MD5 結果: A1B2C3D4E5F6... (32位大寫雜湊值)
+```
+
+#### 6.2 簽名加入請求資料
+```php
+// 行 54: 將簽名加入 API 資料
+$api_data['signature'] = $this->generateSignature($api_data);
+```
+
+**執行內容:**
+- 將生成的簽名加入 API 請求資料
+- 完成請求資料的最終準備
+
+**帶入資料:**
+- **signature**: MD5 雜湊簽名 (32位大寫字串)
+
+---
+
+### 7. API 調用階段
+
+#### 7.1 cURL 請求設定
+```php
+// 行 96-114: callAPI() 方法 - cURL 設定
+$url = $this->api_base_url . $endpoint;  // https://api.nubitya.com/api/payment/create
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'User-Agent: ANT-API-Tester/1.0'
+]);
+curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+```
+
+**執行內容:**
+- 設定完整的 API 網址
+- 配置 POST 請求方式
+- 將資料轉為 JSON 格式
+- 設定 HTTP headers
+- 配置超時和 SSL 選項
+
+**帶入資料:**
+- **URL**: `https://api.nubitya.com/api/payment/create`
+- **Method**: `POST`
+- **Body**: JSON 格式的 API 資料
+- **Headers**: `Content-Type: application/json`, `User-Agent: ANT-API-Tester/1.0`
+- **Timeout**: 30 秒
+
+#### 7.2 執行 API 請求
+```php
+// 行 111-118: 執行請求並取得回應
+$response = curl_exec($ch);
+$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$error = curl_error($ch);
+curl_close($ch);
+
+if ($error) {
+    throw new Exception("API調用失敗: {$error}");
+}
+```
+
+**執行內容:**
+- 執行 cURL 請求
+- 取得 HTTP 狀態碼
+- 檢查是否有連線錯誤
+- 清理 cURL 資源
+
+**可能的回應資料:**
+- **成功情況**: HTTP 200, JSON 回應
+- **失敗情況**: HTTP 錯誤碼, 錯誤訊息
+- **網路錯誤**: cURL 錯誤訊息
+
+---
+
+### 8. 結果處理階段
+
+#### 8.1 API 回應解析
+```php
+// 行 120-125: 回應資料處理
+return [
+    'http_code' => $http_code,
+    'response' => $response,
+    'parsed_response' => json_decode($response, true)
+];
+```
+
+**執行內容:**
+- 記錄 HTTP 狀態碼
+- 保留原始回應內容
+- 嘗試解析 JSON 回應
+
+**帶入資料:**
+- **http_code**: HTTP 狀態碼 (例: 200, 400, 500)
+- **response**: API 原始回應字串
+- **parsed_response**: 解析後的 PHP 陣列 (如果是有效 JSON)
+
+#### 8.2 測試結果封裝
+```php
+// 行 59-64: 成功情況結果封裝
+return [
+    'success' => true,
+    'timestamp' => date('Y-m-d H:i:s'),
+    'test_order_data' => $order_data,
+    'api_response' => $response
+];
+```
+
+**執行內容:**
+- 標記測試成功狀態
+- 記錄測試執行時間
+- 包含測試訂單資料
+- 包含 API 完整回應
+
+**輸出資料結構:**
+```json
+{
+    "success": true,
+    "timestamp": "2025-01-14 15:30:15",
+    "test_order_data": {
+        "order_id": "TEST20250114153001234",
+        "amount": 100,
+        "user_bank_code": "004",
+        "user_bank_account": "1234567890123",
+        "description": "ANT API 開單測試"
+    },
+    "api_response": {
+        "http_code": 200,
+        "response": "...",
+        "parsed_response": {...}
+    }
+}
+```
+
+---
+
+### 9. 前端結果顯示階段
+
+#### 9.1 JSON 回應解析
+```javascript
+// 行 302-306: 前端處理 API 回應
+const response = await fetch('?action=create_order');
+const data = await response.json();
+
+let statusText = data.success ? '✅ 測試成功' : '❌ 測試失敗';
+let statusColor = data.success ? '#28a745' : '#dc3545';
+```
+
+**執行內容:**
+- 解析後端返回的 JSON 資料
+- 判斷測試成功或失敗狀態
+- 設定對應的顏色和圖示
+
+#### 9.2 動態更新頁面內容
+```javascript
+// 行 307-316: 結果顯示 HTML 生成
+resultDiv.innerHTML = `
+    <h4 style="color: ${statusColor}">${statusText}</h4>
+    <p><strong>測試時間:</strong> ${data.timestamp}</p>
+    ${data.test_order_data ? `<p><strong>測試訂單:</strong> ${data.test_order_data.order_id}</p>` : ''}
+    ${data.error ? `<p><strong>錯誤:</strong> ${data.error}</p>` : ''}
+    <details>
+        <summary>詳細結果</summary>
+        <pre>${JSON.stringify(data, null, 2)}</pre>
+    </details>
+`;
+```
+
+**執行內容:**
+- 生成結果顯示的 HTML 內容
+- 包含狀態、時間、訂單號等關鍵資訊
+- 提供完整 JSON 結果的詳細檢視
+- 更新頁面 DOM 元素
+
+#### 9.3 UI 狀態恢復
+```javascript
+// 行 328-330: 恢復 UI 狀態
+loading.style.display = 'none';
+button.disabled = false;
+button.textContent = '重新測試';
+```
+
+**執行內容:**
+- 隱藏載入指示器
+- 重新啟用測試按鈕
+- 更新按鈕文字為「重新測試」
+
+---
+
+## 📊 完整資料流向圖
+
+```
+用戶點擊按鈕
+    ↓
+JavaScript AJAX 請求 (?action=create_order)
+    ↓
+PHP 後端處理
+    ↓
+生成測試訂單資料:
+├── order_id: TEST20250114153001234
+├── amount: 100
+├── user_bank_code: 004
+├── user_bank_account: 1234567890123
+└── description: ANT API 開單測試
+    ↓
+準備 API 請求資料:
+├── api_token: dkTqv40XBDmvlfBayoMngA0BAlDAxCrkzIAAUdwYB6kkKZVLOit1R06PKcgkhglASS79c6yzaokrdoPP
+├── order_id: TEST20250114153001234
+├── amount: 100
+├── user_bank_code: 004
+├── user_bank_account: 1234567890123
+└── timestamp: 1705296600
+    ↓
+生成簽名:
+├── 排序參數: amount=100&api_token=...&order_id=...&timestamp=...&user_bank_account=...&user_bank_code=004
+├── 加入密鑰: ...&hash_key=lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S&hash_iv=yhncs1WpMo60azxEczokzIlVVvVuW69p
+└── MD5簽名: A1B2C3D4E5F6... (32位大寫)
+    ↓
+cURL API 請求:
+├── URL: https://api.nubitya.com/api/payment/create
+├── Method: POST
+├── Body: JSON格式完整資料
+└── Headers: Content-Type: application/json
+    ↓
+API 回應處理:
+├── HTTP Code: 200/400/500...
+├── Response: JSON 或錯誤訊息
+└── 解析結果: PHP 陣列
+    ↓
+結果封裝:
+├── success: true/false
+├── timestamp: 2025-01-14 15:30:15
+├── test_order_data: {...}
+└── api_response: {...}
+    ↓
+JSON 回傳給前端
+    ↓
+JavaScript 解析並更新頁面
+    ↓
+顯示測試結果給用戶
+```
+
+## 🔧 錯誤處理機制
+
+### 1. 網路連線錯誤
+- **觸發條件**: cURL 執行失敗
+- **處理方式**: 拋出 Exception，記錄錯誤訊息
+- **用戶顯示**: 「API調用失敗: [錯誤詳情]」
+
+### 2. API 回應錯誤
+- **觸發條件**: HTTP 狀態碼非 200
+- **處理方式**: 記錄狀態碼和回應內容
+- **用戶顯示**: 顯示 HTTP 狀態碼和原始回應
+
+### 3. JSON 解析錯誤
+- **觸發條件**: API 回應非有效 JSON
+- **處理方式**: 保留原始回應，parsed_response 為 null
+- **用戶顯示**: 在詳細結果中顯示原始回應
+
+### 4. JavaScript 錯誤
+- **觸發條件**: AJAX 請求失敗或網路問題
+- **處理方式**: try-catch 捕獲並顯示錯誤
+- **用戶顯示**: 「❌ 測試失敗 錯誤: [錯誤訊息]」
+
+## 📈 完成狀態
+
+✅ **第85點**: 使用真實API憑證進行開單測試 - **完成**
+✅ **第86點**: 修復空白頁面問題，確保內容正常顯示 - **完成**
+✅ **第87點**: 撰寫完整執行流程說明 - **完成**
+
+---
+
+## 💡 使用說明
+
+1. **訪問測試頁面**: https://test.paygo.tw/ant_order_test.php
+2. **檢查頁面載入**: 確認顯示 API 憑證和測試按鈕
+3. **執行開單測試**: 點擊「開始開單測試」按鈕
+4. **查看測試結果**: 檢視成功/失敗狀態和詳細資訊
+5. **重複測試**: 可點擊「重新測試」進行多次測試
+
+每次測試都會生成唯一的訂單編號，確保測試的獨立性和可追蹤性。
