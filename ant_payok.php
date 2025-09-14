@@ -94,23 +94,33 @@ if(!$MerchantTradeNo) alert("資料錯誤-8000301。", 0);
 		if($sqd["paytype"] == 2 && $sqd["pay_cp"] == 'ant') {
 			echo "<div style='font-size:26px;color:white;'>繳費金額：".$sqd["money"]."</div>";
 
-			// ANT 銀行轉帳資訊顯示 - 簡化版本
+			// ANT 銀行轉帳資訊顯示 - 使用與ebpay_payok相同的樣式
 			if ($payment_info_data && is_array($payment_info_data)) {
 				// 如果有API回傳的銀行資訊
-				echo "<div style='color:white; margin-top:20px;'>";
-				echo "<p>ANT 約定帳戶轉帳</p>";
-				if (isset($payment_info_data['bank_code'])) {
-					echo "<p>銀行代號：" . htmlspecialchars($payment_info_data['bank_code']) . "</p>";
+				$BankCode = $payment_info_data['bank_code'] ?? '';
+				$vAccount = $payment_info_data['bank_account'] ?? '';
+
+				// 獲取繳費期限 - 預設3天後到期
+				$ExpireDate = $sqd["ExpireDate"] ?? '';
+				if (empty($ExpireDate)) {
+					$ExpireDate = date('Y-m-d H:i:s', strtotime('+3 days'));
+					// 更新資料庫中的期限
+					if (!empty($BankCode) && !empty($vAccount)) {
+						$sq2 = $pdo->prepare("update servers_log set PaymentNo=?, ExpireDate=? where orderid=?");
+						$sq2->execute(array($BankCode."-".$vAccount, $ExpireDate, $MerchantTradeNo));
+					}
 				}
-				if (isset($payment_info_data['bank_account'])) {
-					echo "<p>轉帳帳號：" . htmlspecialchars($payment_info_data['bank_account']) . "</p>";
+
+				// 使用標準的payment_inf_render函數顯示銀行轉帳資訊
+				if ($BankCode && $vAccount) {
+					echo web::payment_inf_render(0, $BankCode, $vAccount, $ExpireDate);
+				} else {
+					echo "<div style='color:white; margin-top:20px;'>";
+					echo "<p>ANT 約定帳戶轉帳 - 等待銀行資訊</p>";
+					echo "</div>";
 				}
-				if (isset($payment_info_data['bank_name'])) {
-					echo "<p>銀行名稱：" . htmlspecialchars($payment_info_data['bank_name']) . "</p>";
-				}
-				echo "</div>";
 			} else {
-				// 顯示基本資訊
+				// 顯示基本資訊或等待狀態
 				echo "<div style='color:white; margin-top:20px;'>";
 				echo "<p>ANT 約定帳戶轉帳</p>";
 				if (!empty($sqd["user_bank_code"])) {
@@ -120,6 +130,12 @@ if(!$MerchantTradeNo) alert("資料錯誤-8000301。", 0);
 					$masked_account = str_repeat('*', strlen($sqd["user_bank_account"]) - 4) . substr($sqd["user_bank_account"], -4);
 					echo "<p>您的銀行帳號：" . htmlspecialchars($masked_account) . "</p>";
 				}
+				// 顯示期限資訊
+				$ExpireDate = $sqd["ExpireDate"] ?? '';
+				if (empty($ExpireDate)) {
+					$ExpireDate = date('Y-m-d H:i:s', strtotime('+3 days'));
+				}
+				echo "<div style='font-size:26px;color:white; margin-top:10px;'>請在繳費期限 ".$ExpireDate." 前完成轉帳</div>";
 				echo "</div>";
 			}
 

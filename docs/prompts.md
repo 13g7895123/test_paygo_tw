@@ -197,3 +197,4 @@ yhncs1WpMo60azxEczokzIlVVvVuW69p
 130. 我是要你參考他，並依據API文件調整，你改完後paytimes沒寫入RtnMsg也沒寫入，到底在幹嘛
 131. 幫我調整一下ant_callback，回傳的status如果為4，server_logs的Rtn_msg填入交易成功，Rtn_code填入1
 132. ant_callback的114行，為甚麼要簽名驗證，不會再用到API的資料了，不用簽名驗證
+133. ant_payok的部分，幫我把繳費期限寫在下面，請參考ebpay_payok的樣式，並且需要補上複製按鈕，可以看是不是與ebpay_payok用一樣的方式，把資訊傳到那支function
