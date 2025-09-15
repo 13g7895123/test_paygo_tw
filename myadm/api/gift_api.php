@@ -257,9 +257,17 @@ function handle_get_server_details($pdo) {
  */
 function handle_get_server_items($pdo) {
     $server_id = isset($_GET['server_id']) ? $_GET['server_id'] : (isset($_POST['server_id']) ? $_POST['server_id'] : '');
-    
+
     if (empty($server_id)) {
         api_error('Server ID is required');
+    }
+
+    // 檢查用戶權限
+    $is_admin = !empty($_SESSION["adminid"]);
+    $user_id = !empty($_SESSION["shareid"]) ? $_SESSION["shareid"] : null;
+
+    if (!check_server_permission($pdo, $server_id, $user_id, $is_admin)) {
+        api_error('Access denied: You do not have permission to manage this server', 403);
     }
     
     $query = $pdo->prepare("
@@ -282,9 +290,17 @@ function handle_add_server_item($pdo) {
     $server_id = _r('server_id') ?? '';
     $game_name = _r('game_name') ?? '';
     $database_name = _r('database_name') ?? '';
-    
+
     if (empty($server_id) || empty($game_name)) {
         api_error('Server ID and game name are required');
+    }
+
+    // 檢查用戶權限
+    $is_admin = !empty($_SESSION["adminid"]);
+    $user_id = !empty($_SESSION["shareid"]) ? $_SESSION["shareid"] : null;
+
+    if (!check_server_permission($pdo, $server_id, $user_id, $is_admin)) {
+        api_error('Access denied: You do not have permission to manage this server', 403);
     }
     
     // 檢查是否已存在（根據 game_name 檢查）
@@ -325,9 +341,27 @@ function handle_add_server_item($pdo) {
  */
 function handle_delete_server_item($pdo) {
     $item_id = _r('item_id') ?? '';
-    
+
     if (empty($item_id)) {
         api_error('Item ID is required');
+    }
+
+    // 先取得item所屬的server_id以檢查權限
+    $item_query = $pdo->prepare("SELECT server_id FROM server_items WHERE id = :item_id");
+    $item_query->bindValue(':item_id', $item_id, PDO::PARAM_INT);
+    $item_query->execute();
+    $item = $item_query->fetch(PDO::FETCH_ASSOC);
+
+    if (!$item) {
+        api_error('Item not found', 404);
+    }
+
+    // 檢查用戶權限
+    $is_admin = !empty($_SESSION["adminid"]);
+    $user_id = !empty($_SESSION["shareid"]) ? $_SESSION["shareid"] : null;
+
+    if (!check_server_permission($pdo, $item['server_id'], $user_id, $is_admin)) {
+        api_error('Access denied: You do not have permission to manage this server', 403);
     }
     
     // 軟刪除（設置為不活躍）
@@ -531,9 +565,17 @@ function handle_send_gift($pdo) {
     $items_json = _r('items') ?? '';
     $operator_id = isset($_SESSION['login_id']) ? $_SESSION['login_id'] : null;
     $operator_name = isset($_SESSION['login_name']) ? $_SESSION['login_name'] : 'System';
-    
+
     if (empty($server_id) || empty($game_account) || empty($items_json)) {
         api_error('Server ID, game account and items are required');
+    }
+
+    // 檢查用戶權限
+    $is_admin = !empty($_SESSION["adminid"]);
+    $user_id = !empty($_SESSION["shareid"]) ? $_SESSION["shareid"] : null;
+
+    if (!check_server_permission($pdo, $server_id, $user_id, $is_admin)) {
+        api_error('Access denied: You do not have permission to manage this server', 403);
     }
     
     // 解析物品資料
@@ -840,9 +882,17 @@ function handle_test_game_server_connection($pdo) {
     $server_id = isset($_GET['server_id']) ? $_GET['server_id'] : (isset($_POST['server_id']) ? $_POST['server_id'] : '');
     $items = isset($_POST['items']) ? $_POST['items'] : null; // 要送出的道具清單，用來檢查是否需要驗證道具名稱欄位
     $quick_test = isset($_POST['quick_test']) ? $_POST['quick_test'] : false; // 快速測試模式，跳過部分檢查
-    
+
     if (empty($server_id)) {
         api_error('Server ID is required');
+    }
+
+    // 檢查用戶權限
+    $is_admin = !empty($_SESSION["adminid"]);
+    $user_id = !empty($_SESSION["shareid"]) ? $_SESSION["shareid"] : null;
+
+    if (!check_server_permission($pdo, $server_id, $user_id, $is_admin)) {
+        api_error('Access denied: You do not have permission to manage this server', 403);
     }
     
     try {

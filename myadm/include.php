@@ -345,6 +345,15 @@ function top_html()
                     </a>
                 </li>
 
+                <? if (_s("sharecount2") > 0) { ?>
+                <li>
+                    <a href="send_gift">
+                        <i class="main-icon fa-solid fa-gift"></i>
+                        <span>手動派獎</span>
+                    </a>
+                </li>
+                <? } ?>
+
                 <? if (_s("sharecount") > 0) { ?>
 				<li>
 					<a href="share_link">
