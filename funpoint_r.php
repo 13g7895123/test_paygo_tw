@@ -61,6 +61,10 @@ try {
         $bonusid = $dd["db_bonusid"];
         $bonusrate = $dd["db_bonusrate"];        
 
+        // 取得資料表名稱
+        $paytable = $dd["paytable"];
+        $paytable = ($paytable == 'custom') ? $dd["paytable_custom"] : $paytable;
+
         $gamepdo = opengamepdo($ip, $port, $dbname, $user, $pass);
 
         if($dd["paytable"] == "ezpay") {

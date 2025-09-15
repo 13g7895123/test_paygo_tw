@@ -24,6 +24,10 @@ $pdo = openpdo();
 	    $HashIV = 'mockPayHashIv';
 	}
 
+  // 取得資料表名稱
+  $paytable = $sqd["paytable"];
+  $paytable = ($paytable == 'custom') ? $sqd["paytable_custom"] : $paytable;
+
     $TradeInfo = $_POST["TradeInfo"];
     if(!$TradeInfo) die("資料錯誤-8000300。");
     $Tinfo = create_aes_decrypt($TradeInfo, $HashKey, $HashIV);

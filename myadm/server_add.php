@@ -569,6 +569,7 @@ if(_r("st") == 'addsave') {
             'szfupay_key2' => _r("szfupay_key2"),
             'gstats2' => _r("gstats2"),
             'paytable' => _r("paytable"),
+            'paytable_custom' => _r("paytable_custom"),
             'gp' => $gp,
             'products' => _r("products"),
             'max_credit' => _r("max_credit"),
@@ -647,6 +648,7 @@ if(_r("st") == 'addsave') {
 		  'szfupay_key2' => _r("szfupay_key2"),
 		  'gstats2' => _r("gstats2"),
 		  'paytable' => _r("paytable"),
+          'paytable_custom' => _r("paytable_custom"),
 		  'gp' => $gp,
 		  'products' => _r("products"),
 		  'max_credit' => _r("max_credit"),
@@ -1002,6 +1004,10 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 	<input type="radio" name="paytable" value="ezpay"<?if($datalist['paytable'] == 'ezpay') echo " checked"?>> ezpay&nbsp;&nbsp;
 
 	<input type="radio" name="paytable" value="hope"<?if($datalist['paytable'] == 'hope') echo " checked"?>> 希望&nbsp;&nbsp;
+
+    <!-- 自定義資料表 -->
+	<input type="radio" name="paytable" value="custom"<?if($datalist['paytable'] == 'custom') echo " checked"?>> 其他&nbsp;&nbsp;
+	<input type="text" name="paytable_custom" id="paytable_custom" value="<?=$datalist['paytable_custom']?>">
 
 </td></tr>
 
@@ -1899,4 +1905,42 @@ function test_connect() {
 
 }
 
+// 以下程式碼會在文件載入完成後執行，並監聽 paytable 的 radio 按鈕變化
+$(document).ready(function() {
+    // 定義一個函式來根據 paytable 的值啟用或停用 paytable_custom 欄位
+    function togglePaytableCustom() {
+        // 取得目前被選取的 paytable radio 的值
+        var paytableValue = $("input[name='paytable']:checked").val();
+        // 如果選取的值不是 custom，則將 paytable_custom 欄位設為 readonly
+        if (paytableValue !== "custom") {
+            // 設定 paytable_custom 欄位為唯讀（readonly）
+            $("#paytable_custom").prop("readonly", true);
+        } else {
+            // 如果選取的是 custom，則移除 readonly 屬性，允許編輯
+            $("#paytable_custom").prop("readonly", false);
+        }
+    }
+
+    // 初始載入時執行一次，確保狀態正確
+    togglePaytableCustom();
+
+    // 當 paytable radio 按鈕變化時，重新檢查並設定 paytable_custom 欄位狀態
+    $("input[name='paytable']").on("change", function() {
+        togglePaytableCustom();
+    });
+
+    // 當 paytable_custom 欄位被點擊時，檢查是否為唯讀狀態
+    $("#paytable_custom").on("focus click", function(e) {
+        // 如果 paytable_custom 欄位為 readonly，顯示提示訊息
+        if ($(this).prop("readonly")) {
+            // 顯示提示訊息，告知使用者需先切換選項
+            alert("請先將資料表選項切換為「其他」，才能自訂資料表名稱。");
+            // 阻止進一步的操作（例如游標進入欄位）
+            $(this).blur();
+            // 阻止事件的預設行為
+            e.preventDefault();
+            return false;
+        }
+    });
+});
 </script>

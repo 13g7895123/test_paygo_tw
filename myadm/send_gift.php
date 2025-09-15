@@ -118,6 +118,7 @@ top_html();
                                             <i class="fa fa-search"></i> 查詢執行記錄
                                         </button>
                                         <button type="button" class="btn btn-warning btn-lg" id="testConnectionBtn" style="display: none;">
+                                        <!-- <button type="button" class="btn btn-warning btn-lg" id="testConnectionBtn"> -->
                                             <i class="fa fa-plug"></i> 測試連線
                                         </button>
                                         <button type="button" class="btn btn-primary btn-lg" id="sendNextBtn" style="display: none;">
@@ -154,14 +155,14 @@ top_html();
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="itemGameName">道具編號 <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="itemGameName" name="itemGameName" placeholder="輸入道具編號" required>
+                                    <label for="itemCode">道具編號 <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="itemCode" name="itemCode" placeholder="輸入道具編號" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="itemDatabaseName">道具名稱</label>
-                                    <input type="text" class="form-control" id="itemDatabaseName" name="itemDatabaseName" placeholder="輸入道具名稱（選填）">
+                                    <label for="itemName">道具名稱</label>
+                                    <input type="text" class="form-control" id="itemName" name="itemName" placeholder="輸入道具名稱（選填）">
                                 </div>
                             </div>
                         </div>
@@ -882,8 +883,8 @@ let currentLogId = null;
 
 // 道具設定相關變數
 let itemSettings = {
-    gameName: '',
-    databaseName: ''
+    itemCode: '',
+    itemName: ''
 };
 
 // 道具管理相關變數
@@ -1065,12 +1066,12 @@ function bindEventHandlers() {
     });
     
     // 道具設定表單輸入監聽
-    $('#itemGameName').on('input', function() {
-        itemSettings.gameName = $(this).val().trim();
+    $('#itemCode').on('input', function() {
+        itemSettings.itemCode = $(this).val().trim();
     });
-    
-    $('#itemDatabaseName').on('input', function() {
-        itemSettings.databaseName = $(this).val().trim();
+
+    $('#itemName').on('input', function() {
+        itemSettings.itemName = $(this).val().trim();
     });
 }
 
@@ -1162,16 +1163,16 @@ function updateConfirmationDisplay() {
         stageData.items.forEach((item, index) => {
             if (index > 0) itemsText += '、';
             // 顯示道具編號，如果有道具名稱則加括號顯示
-            let itemDisplayName = item.gameName || item.databaseName || '未知道具';
-            
-            // 如果道具名稱與編號不同，且不是選項文字，則加括號顯示道具名稱
-            if (item.databaseName && 
-                item.databaseName !== item.gameName && 
-                item.databaseName !== '請選擇道具' &&
-                item.databaseName.trim() !== '') {
-                itemDisplayName += ` (${item.databaseName})`;
+            let itemDisplayName = item.itemCode || '未知道具';
+
+            // 如果有道具名稱，則加括號顯示道具名稱
+            if (item.itemName &&
+                item.itemName !== item.itemCode &&
+                item.itemName !== '請選擇道具' &&
+                item.itemName.trim() !== '') {
+                itemDisplayName += ` (${item.itemName})`;
             }
-            
+
             itemsText += `${itemDisplayName} x${item.quantity}`;
         });
         $('#confirmItems').text(itemsText);
@@ -1432,8 +1433,8 @@ function openItemSettingsModal() {
     $('#itemSettingsModal').modal('show');
     
     // 載入現有設定到表單
-    $('#itemGameName').val(itemSettings.gameName);
-    $('#itemDatabaseName').val(itemSettings.databaseName);
+    $('#itemCode').val(itemSettings.itemCode);
+    $('#itemName').val(itemSettings.itemName);
     
     // 載入伺服器道具清單
     loadServerItems();
@@ -1446,9 +1447,9 @@ function validateItemSettings() {
     let errorMessages = [];
     
     // 檢查必填欄位 - 只有道具編號是必填的
-    if (!itemSettings.gameName) {
+    if (!itemSettings.itemCode) {
         errorMessages.push('請輸入道具編號');
-        $('#itemGameName').focus();
+        $('#itemCode').focus();
         isValid = false;
     }
     
@@ -1485,8 +1486,8 @@ function addServerItem() {
         data: {
             action: 'add_server_item',
             server_id: stageData.server.id,
-            game_name: itemSettings.gameName,
-            database_name: itemSettings.databaseName
+            item_code: itemSettings.itemCode,
+            item_name: itemSettings.itemName
         },
         dataType: 'json'
     })
@@ -1502,10 +1503,10 @@ function addServerItem() {
             showNotification('道具新增成功！', 'success');
             
             // 清空表單
-            $('#itemGameName').val('');
-            $('#itemDatabaseName').val('');
-            itemSettings.gameName = '';
-            itemSettings.databaseName = '';
+            $('#itemCode').val('');
+            $('#itemName').val('');
+            itemSettings.itemCode = '';
+            itemSettings.itemName = '';
         } else {
             showNotification('道具新增失敗：' + response.message, 'error');
         }
@@ -1541,8 +1542,8 @@ function loadServerItemsForSelect(serverId) {
         if (response.success) {
             serverItems = response.data.map(item => ({
                 id: item.id,
-                gameName: item.game_name,
-                databaseName: item.database_name
+                itemCode: item.item_code,
+                itemName: item.item_name
             }));
             updateAllItemOptions();
         } else {
@@ -1563,8 +1564,8 @@ function loadServerItemsForSelect(serverId) {
 function loadSavedItemSettings() {
     // 這個函數在選擇伺服器時會被調用
     itemSettings = {
-        gameName: '',
-        databaseName: ''
+        itemCode: '',
+        itemName: ''
     };
 }
 
@@ -1662,11 +1663,11 @@ function updateItemOptions(selectElement) {
     
     serverItems.forEach(function(item) {
         // 優先顯示道具編號，如果有道具名稱則一併顯示
-        let displayText = item.gameName;
-        if (item.databaseName && item.databaseName !== item.gameName) {
-            displayText += ` (${item.databaseName})`;
+        let displayText = item.itemCode;
+        if (item.itemName && item.itemName !== item.itemCode) {
+            displayText += ` (${item.itemName})`;
         }
-        selectElement.append(`<option value="${item.databaseName || item.gameName}">${displayText}</option>`);
+        selectElement.append(`<option value="${item.itemCode}">${displayText}</option>`);
     });
 }
 
@@ -1691,15 +1692,15 @@ function updateStageDataItems() {
         const quantity = parseInt(itemQuantity.val()) || 1;
         
         if (itemValue) {
-            const itemName = itemSelect.find('option:selected').text();
+            const itemDisplayText = itemSelect.find('option:selected').text();
             // 找到對應的道具資料
-            const selectedItem = serverItems.find(item => 
-                item.databaseName === itemValue || item.gameName === itemValue
+            const selectedItem = serverItems.find(item =>
+                item.itemCode === itemValue
             );
             items.push({
-                databaseName: itemValue,
-                gameName: selectedItem ? selectedItem.gameName : itemValue,
-                name: itemName,
+                itemCode: itemValue,
+                itemName: selectedItem ? selectedItem.itemName : '',
+                displayText: itemDisplayText,
                 quantity: quantity
             });
         }
@@ -1739,8 +1740,8 @@ function loadServerItems() {
                 items.forEach(function(item) {
                     html += `
                         <tr>
-                            <td>${item.game_name}</td>
-                            <td>${item.database_name}</td>
+                            <td>${item.item_code}</td>
+                            <td>${item.item_name || ''}</td>
                             <td>
                                 <button type="button" class="btn btn-xs btn-danger" onclick="removeServerItem(${item.id})" title="刪除道具">
                                     <i class="fa fa-trash"></i> 刪除
@@ -1968,7 +1969,8 @@ function testGameServerConnection(showModal = true) {
     
     // 準備要送出的道具資料，用來檢查是否需要驗證道具名稱欄位
     const itemsToSend = stageData.items || [];
-    
+    const gameAccount = stageData.gameAccount || null;
+
     return $.ajax({
         url: 'api/gift_api.php',
         type: 'POST',
@@ -1976,6 +1978,7 @@ function testGameServerConnection(showModal = true) {
             action: 'test_game_server_connection',
             server_id: serverId,
             items: itemsToSend,
+            game_account: gameAccount,
             quick_test: !showModal // 背景測試時使用快速模式
         },
         dataType: 'json',
@@ -2083,7 +2086,149 @@ function displayConnectionTestModal(data) {
                             <tr><td><strong>字元編碼</strong></td><td>${data.database_info.charset}</td></tr>
                         </table>`;
     }
-    
+
+    // 顯示測試 SQL 語句
+    if (data.test_sqls) {
+        modalContent += `
+                        <h5>測試用 SQL 語句 <small class="text-muted">（可複製以下語句到資料庫執行測試）</small></h5>`;
+
+        if (data.test_sqls.error) {
+            modalContent += `
+                        <div class="alert alert-warning">
+                            <strong>注意：</strong>${data.test_sqls.error}
+                        </div>`;
+
+            if (data.test_sqls.basic_example) {
+                modalContent += `
+                        <div class="panel panel-info">
+                            <div class="panel-heading">基本 SQL 範例</div>
+                            <div class="panel-body">
+                                <p class="text-muted">${data.test_sqls.basic_example.description}</p>`;
+
+                data.test_sqls.basic_example.example_sql.forEach(function(sql, index) {
+                    modalContent += `
+                                <div class="form-group">
+                                    <label>範例 ${index + 1}:</label>
+                                    <textarea class="form-control" rows="2" readonly style="font-family: monospace; font-size: 12px;">${sql}</textarea>
+                                </div>`;
+                });
+
+                modalContent += `
+                                <div class="alert alert-info" style="margin-top: 10px;">
+                                    <strong>設定步驟：</strong>
+                                    <ol style="margin: 5px 0 0 20px;">`;
+
+                data.test_sqls.steps.forEach(function(step) {
+                    modalContent += `<li>${step}</li>`;
+                });
+
+                modalContent += `
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>`;
+            }
+        } else if (data.test_sqls.test_cases && data.test_sqls.test_cases.length > 0) {
+            if (data.test_sqls.warning) {
+                modalContent += `
+                        <div class="alert alert-warning">
+                            <strong>${data.test_sqls.warning.message}</strong>
+                            <ul style="margin-top: 10px;">`;
+                data.test_sqls.warning.suggestions.forEach(function(suggestion) {
+                    modalContent += `<li>${suggestion}</li>`;
+                });
+                modalContent += `</ul>
+                        </div>`;
+            }
+
+            // 顯示每個測試案例的 SQL
+            data.test_sqls.test_cases.forEach(function(testCase, caseIndex) {
+                const isActualData = testCase.is_actual_data === true;
+                const panelClass = isActualData ? 'panel-primary' : 'panel-default';
+                const badgeClass = isActualData ? 'label-primary' : 'label-default';
+                const hasRealAccount = testCase.test_account && !testCase.test_account.includes('[') && !testCase.test_account.includes('請輸入');
+
+                modalContent += `
+                        <div class="panel ${panelClass}">
+                            <div class="panel-heading">
+                                <strong>${testCase.case_description}</strong>
+                                ${isActualData ? '<span class="label label-primary">目前選擇的道具</span>' : '<span class="label label-default">範例</span>'}
+                                ${!isActualData || !hasRealAccount ? `<small class="text-muted">（帳號: ${testCase.test_account}）</small>` : `<small class="text-success">（遊戲帳號: ${testCase.test_account}）</small>`}
+                            </div>
+                            <div class="panel-body">
+                                ${isActualData && hasRealAccount ? '<p class="text-success"><i class="fa fa-check-circle"></i> 以下是根據您目前選擇的道具和遊戲帳號生成的 SQL 語句，可直接執行：</p>' : ''}
+                                ${isActualData && !hasRealAccount ? '<p class="text-info"><i class="fa fa-info-circle"></i> 以下是根據您目前選擇的道具生成的 SQL 語句，請先輸入遊戲帳號再重新測試連線：</p>' : ''}`;
+
+                testCase.sqls.forEach(function(sqlItem, sqlIndex) {
+                    modalContent += `
+                                <div class="form-group">
+                                    <label>${sqlItem.description}</label>
+                                    <textarea class="form-control" rows="3" readonly style="font-family: monospace; font-size: 11px; background-color: ${isActualData ? '#f0f8ff' : '#f8f8f8'};">${sqlItem.sql}</textarea>
+                                </div>`;
+                });
+
+                modalContent += `
+                            </div>
+                        </div>`;
+            });
+
+            // 顯示驗證 SQL
+            if (data.test_sqls.verification_sqls && data.test_sqls.verification_sqls.length > 0) {
+                const hasActualData = data.test_sqls.test_cases && data.test_sqls.test_cases.some(tc => tc.is_actual_data === true);
+                const hasRealAccount = data.test_sqls.test_cases && data.test_sqls.test_cases.some(tc => tc.is_actual_data === true && tc.test_account && !tc.test_account.includes('[') && !tc.test_account.includes('請輸入'));
+                modalContent += `
+                        <div class="panel panel-info">
+                            <div class="panel-heading">${hasActualData ? '檢查道具派發結果 SQL' : '驗證與統計 SQL'}</div>
+                            <div class="panel-body">
+                                ${hasActualData && hasRealAccount ? '<p class="text-success">執行上述 INSERT 語句後，可使用以下 SQL 檢查派發結果：</p>' : ''}
+                                ${hasActualData && !hasRealAccount ? '<p class="text-muted">執行 INSERT 語句後，可使用以下 SQL 檢查派發結果（請先輸入遊戲帳號）：</p>' : ''}`;
+
+                let currentSqlGroup = '';
+                data.test_sqls.verification_sqls.forEach(function(sql, index) {
+                    const trimmedSql = sql.trim();
+                    if (trimmedSql === '') {
+                        return; // 跳過空行
+                    }
+
+                    if (trimmedSql.startsWith('--')) {
+                        if (!trimmedSql.startsWith('-- DELETE')) {
+                            currentSqlGroup = trimmedSql.replace('--', '').trim();
+                            modalContent += `<h6 class="text-info">${currentSqlGroup}</h6>`;
+                        } else {
+                            modalContent += `
+                                <div class="form-group">
+                                    <label class="text-danger">${trimmedSql.replace('--', '').trim()}</label>
+                                    <textarea class="form-control" rows="1" readonly style="font-family: monospace; font-size: 11px; background-color: #fff5f5;">${data.test_sqls.verification_sqls[index + 1] || ''}</textarea>
+                                </div>`;
+                        }
+                    } else if (trimmedSql.length > 0 && !trimmedSql.startsWith('--')) {
+                        modalContent += `
+                                <div class="form-group">
+                                    <textarea class="form-control" rows="2" readonly style="font-family: monospace; font-size: 11px; background-color: #f0f8ff;">${sql}</textarea>
+                                </div>`;
+                    }
+                });
+
+                modalContent += `
+                            </div>
+                        </div>`;
+            }
+
+            // 顯示 SQL 統計資訊
+            if (data.test_sqls.summary) {
+                const hasActualData = data.test_sqls.test_cases && data.test_sqls.test_cases.some(tc => tc.is_actual_data === true);
+                modalContent += `
+                        <div class="alert alert-info">
+                            <strong>${hasActualData ? '道具 SQL 統計' : 'SQL 統計'}：</strong>
+                            ${hasActualData ?
+                                `您選擇的道具數量 ${data.test_sqls.summary.total_test_sqls} 個，生成 INSERT 語句 ${data.test_sqls.summary.total_test_sqls} 條` :
+                                `測試案例 ${data.test_sqls.summary.total_test_cases} 個，INSERT 語句 ${data.test_sqls.summary.total_test_sqls} 條`
+                            }${data.test_sqls.summary.verification_sqls_count > 0 ? `，檢查語句 ${data.test_sqls.summary.verification_sqls_count} 條` : ''}
+                        </div>`;
+            }
+        }
+    }
+
     modalContent += `
                         <div class="alert ${data.connection.success && (!data.settings.configured || (data.table_check.success && data.fields_check.success)) ? 'alert-success' : 'alert-warning'}" style="margin-top: 20px;">
                             <strong>總結：</strong>

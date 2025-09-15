@@ -147,7 +147,7 @@ try {
         case 'test_game_server_connection':
             handle_test_game_server_connection($pdo);
             break;
-            
+
         default:
             api_error('Invalid action', 400);
     }
@@ -257,21 +257,21 @@ function handle_get_server_details($pdo) {
  */
 function handle_get_server_items($pdo) {
     $server_id = isset($_GET['server_id']) ? $_GET['server_id'] : (isset($_POST['server_id']) ? $_POST['server_id'] : '');
-    
+
     if (empty($server_id)) {
         api_error('Server ID is required');
     }
-    
+
     $query = $pdo->prepare("
-        SELECT id, server_id, game_name, database_name, is_active, created_at, updated_at 
-        FROM server_items 
-        WHERE server_id = :server_id AND is_active = 1 
-        ORDER BY game_name
+        SELECT id, server_id, item_code, item_name, is_active, created_at, updated_at
+        FROM server_items
+        WHERE server_id = :server_id AND is_active = 1
+        ORDER BY item_code
     ");
     $query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
     $query->execute();
     $items = $query->fetchAll(PDO::FETCH_ASSOC);
-    
+
     api_success($items, 'Server items retrieved successfully');
 }
 
@@ -280,43 +280,43 @@ function handle_get_server_items($pdo) {
  */
 function handle_add_server_item($pdo) {
     $server_id = _r('server_id') ?? '';
-    $game_name = _r('game_name') ?? '';
-    $database_name = _r('database_name') ?? '';
-    
-    if (empty($server_id) || empty($game_name)) {
-        api_error('Server ID and game name are required');
+    $item_code = _r('item_code') ?? '';
+    $item_name = _r('item_name') ?? '';
+
+    if (empty($server_id) || empty($item_code)) {
+        api_error('Server ID and item code are required');
     }
-    
-    // 檢查是否已存在（根據 game_name 檢查）
+
+    // 檢查是否已存在（根據 item_code 檢查）
     $check_query = $pdo->prepare("
-        SELECT id FROM server_items 
-        WHERE server_id = :server_id AND game_name = :game_name
+        SELECT id FROM server_items
+        WHERE server_id = :server_id AND item_code = :item_code
     ");
     $check_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
-    $check_query->bindValue(':game_name', $game_name, PDO::PARAM_STR);
+    $check_query->bindValue(':item_code', $item_code, PDO::PARAM_STR);
     $check_query->execute();
-    
+
     if ($check_query->fetch()) {
-        api_error('Item with this game name already exists');
+        api_error('Item with this code already exists');
     }
-    
+
     // 新增物品
     $insert_query = $pdo->prepare("
-        INSERT INTO server_items (server_id, game_name, database_name, is_active) 
-        VALUES (:server_id, :game_name, :database_name, 1)
+        INSERT INTO server_items (server_id, item_code, item_name, is_active)
+        VALUES (:server_id, :item_code, :item_name, 1)
     ");
     $insert_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
-    $insert_query->bindValue(':game_name', $game_name, PDO::PARAM_STR);
-    $insert_query->bindValue(':database_name', $database_name, PDO::PARAM_STR);
+    $insert_query->bindValue(':item_code', $item_code, PDO::PARAM_STR);
+    $insert_query->bindValue(':item_name', $item_name, PDO::PARAM_STR);
     $insert_query->execute();
-    
+
     $item_id = $pdo->lastInsertId();
-    
+
     api_success([
         'id' => $item_id,
         'server_id' => $server_id,
-        'game_name' => $game_name,
-        'database_name' => $database_name
+        'item_code' => $item_code,
+        'item_name' => $item_name
     ], 'Item added successfully');
 }
 
@@ -351,27 +351,27 @@ function handle_delete_server_item($pdo) {
  */
 function handle_update_server_item($pdo) {
     $item_id = _r('item_id') ?? '';
-    $game_name = _r('game_name') ?? '';
-    $database_name = _r('database_name') ?? '';
-    
-    if (empty($item_id) || empty($game_name)) {
-        api_error('Item ID and game name are required');
+    $item_code = _r('item_code') ?? '';
+    $item_name = _r('item_name') ?? '';
+
+    if (empty($item_id) || empty($item_code)) {
+        api_error('Item ID and item code are required');
     }
-    
+
     $update_query = $pdo->prepare("
-        UPDATE server_items 
-        SET game_name = :game_name, database_name = :database_name, updated_at = CURRENT_TIMESTAMP 
+        UPDATE server_items
+        SET item_code = :item_code, item_name = :item_name, updated_at = CURRENT_TIMESTAMP
         WHERE id = :item_id
     ");
     $update_query->bindValue(':item_id', $item_id, PDO::PARAM_INT);
-    $update_query->bindValue(':game_name', $game_name, PDO::PARAM_STR);
-    $update_query->bindValue(':database_name', $database_name, PDO::PARAM_STR);
+    $update_query->bindValue(':item_code', $item_code, PDO::PARAM_STR);
+    $update_query->bindValue(':item_name', $item_name, PDO::PARAM_STR);
     $update_query->execute();
-    
+
     if ($update_query->rowCount() === 0) {
         api_error('Item not found', 404);
     }
-    
+
     api_success(null, 'Item updated successfully');
 }
 
@@ -765,11 +765,11 @@ function handle_get_gift_execution_log($pdo) {
         
         // 為每個物品生成INSERT SQL
         foreach ($items as $item) {
-            $item_name = $item['databaseName'];
+            $item_code = $item['itemCode'];
             $quantity = $item['quantity'];
             
             // 基本SQL模板 - 使用設定的欄位名稱
-            $base_sql = "INSERT INTO `{$table_name}` (`{$account_field}`, `{$item_field}`, `{$quantity_field}`, `created_at`) VALUES ('{$game_account}', '{$item_name}', {$quantity}, NOW())";
+            $base_sql = "INSERT INTO `{$table_name}` (`{$account_field}`, `{$item_field}`, `{$quantity_field}`) VALUES ('{$game_account}', '{$item_code}', {$quantity})";
             
             // 如果有動態欄位，加入到SQL中
             if (!empty($fields)) {
@@ -782,16 +782,16 @@ function handle_get_gift_execution_log($pdo) {
                 }
                 
                 if (!empty($additional_fields)) {
-                    $base_sql = "INSERT INTO `{$table_name}` (`{$account_field}`, `{$item_field}`, `{$quantity_field}`, " . 
-                               implode(', ', $additional_fields) . ", `created_at`) VALUES ('{$game_account}', '{$item_name}', {$quantity}, " . 
-                               implode(', ', $additional_values) . ", NOW())";
+                    $base_sql = "INSERT INTO `{$table_name}` (`{$account_field}`, `{$item_field}`, `{$quantity_field}`, " .
+                               implode(', ', $additional_fields) . ") VALUES ('{$game_account}', '{$item_code}', {$quantity}, " .
+                               implode(', ', $additional_values) . ")";
                 }
             }
             
             $execution_sqls[] = [
                 'item' => $item,
                 'sql' => $base_sql,
-                'description' => "為帳號 {$game_account} 新增物品 {$item['name']} x{$quantity}"
+                'description' => "為帳號 {$game_account} 新增物品 {$item['itemName']} x{$quantity}"
             ];
         }
     }
@@ -839,6 +839,7 @@ function handle_get_gift_execution_log($pdo) {
 function handle_test_game_server_connection($pdo) {
     $server_id = isset($_GET['server_id']) ? $_GET['server_id'] : (isset($_POST['server_id']) ? $_POST['server_id'] : '');
     $items = isset($_POST['items']) ? $_POST['items'] : null; // 要送出的道具清單，用來檢查是否需要驗證道具名稱欄位
+    $game_account = isset($_POST['game_account']) ? $_POST['game_account'] : null; // 實際的遊戲帳號
     $quick_test = isset($_POST['quick_test']) ? $_POST['quick_test'] : false; // 快速測試模式，跳過部分檢查
     
     if (empty($server_id)) {
@@ -925,12 +926,19 @@ function handle_test_game_server_connection($pdo) {
                     
                     $fields_check = check_fields_exist($game_db, $settings['table_name'], $required_fields);
                     $result['fields_check'] = $fields_check;
+
+                    // 6. 生成測試用的 SQL 語句 (無論欄位檢查是否成功)
+                    $result['test_sqls'] = generate_test_sqls($pdo, $server_id, $settings, $fields_check['success'], $items, $game_account);
                 } else {
                     $result['fields_check'] = ['success' => false, 'error' => '無法檢查欄位，因為資料表不存在'];
+                    // 即使表格不存在，也提供基本的 SQL 生成
+                    $result['test_sqls'] = generate_test_sqls($pdo, $server_id, $settings, false, $items, $game_account);
                 }
             } else {
                 $result['table_check'] = ['success' => false, 'error' => '派獎設定不完整'];
                 $result['fields_check'] = ['success' => false, 'error' => '派獎設定不完整'];
+                // 即使設定不完整，也提供基本的 SQL 範例
+                $result['test_sqls'] = generate_test_sqls($pdo, $server_id, $settings, false, $items, $game_account);
             }
             
             // 5. 取得資料庫資訊 (非快速測試模式才執行)
@@ -1039,15 +1047,15 @@ function execute_gift_to_game_server($pdo, $server_id, $game_account, $items, $l
             }
             
             $game_db->commit();
-            
+
             // 8. 驗證資料是否正確寫入
             $verification_result = verify_gift_insertion($game_db, $settings, $game_account, $items);
             if (!$verification_result['success']) {
                 return ['success' => false, 'error' => '資料驗證失敗: ' . $verification_result['error']];
             }
-            
+
             return [
-                'success' => true, 
+                'success' => true,
                 'message' => "成功派發 {$inserted_count} 個物品到遊戲伺服器",
                 'inserted_count' => $inserted_count,
                 'verification' => $verification_result['data']
@@ -1155,36 +1163,44 @@ function insert_gift_item($pdo, $settings, $dynamic_fields, $game_account, $item
         $table_name = $settings['table_name'];
         $account_field = $settings['account_field'];
         $item_field = $settings['item_field'] ?: 'item_id';
+        $item_name_field = $settings['item_name_field']; // 新增：道具名稱欄位
         $quantity_field = $settings['quantity_field'] ?: 'quantity';
-        
-        // 建構 SQL
+
+        // 建構 SQL - 與測試連線邏輯一致
         $fields = ["`{$account_field}`", "`{$item_field}`", "`{$quantity_field}`"];
-        $values = [':game_account', ':item_name', ':quantity'];
+        $values = [':game_account', ':item_code', ':quantity'];
         $params = [
             ':game_account' => $game_account,
-            ':item_name' => $item['databaseName'],
+            ':item_code' => $item['itemCode'], // 修正：使用正確的參數名稱
             ':quantity' => $item['quantity']
         ];
-        
+
+        // 如果有設定道具名稱欄位，加入道具名稱（與測試SQL一致）
+        if (!empty($item_name_field) && !empty($item['itemName'])) {
+            $fields[] = "`{$item_name_field}`";
+            $values[] = ':item_name';
+            $params[':item_name'] = $item['itemName'];
+        }
+
         // 加入動態欄位
         foreach ($dynamic_fields as $field) {
             $fields[] = "`{$field['field_name']}`";
             $values[] = ':' . $field['field_name'];
             $params[':' . $field['field_name']] = $field['field_value'];
         }
-        
-        // 加入時間戳記
-        $fields[] = '`created_at`';
-        $values[] = 'NOW()';
-        
+
+        // 加入時間戳記（與測試SQL一致）
+        // $fields[] = '`created_at`';
+        // $values[] = 'NOW()';
+
         $sql = "INSERT INTO `{$table_name}` (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $values) . ")";
-        
+
         $query = $pdo->prepare($sql);
         foreach ($params as $key => $value) {
             $query->bindValue($key, $value, PDO::PARAM_STR);
         }
         $query->execute();
-        
+
         return ['success' => true, 'insert_id' => $pdo->lastInsertId()];
         
     } catch (PDOException $e) {
@@ -1201,42 +1217,240 @@ function verify_gift_insertion($pdo, $settings, $game_account, $items) {
         $account_field = $settings['account_field'];
         $item_field = $settings['item_field'] ?: 'item_id';
         $quantity_field = $settings['quantity_field'] ?: 'quantity';
-        
+
         $verification_data = [];
-        
+
         foreach ($items as $item) {
             $check_query = $pdo->prepare("
-                SELECT COUNT(*) as count, SUM(`{$quantity_field}`) as total_quantity 
-                FROM `{$table_name}` 
-                WHERE `{$account_field}` = :game_account 
+                SELECT COUNT(*) as count, SUM(`{$quantity_field}`) as total_quantity
+                FROM `{$table_name}`
+                WHERE `{$account_field}` = :game_account
                 AND `{$item_field}` = :item_name
-                AND `created_at` >= DATE_SUB(NOW(), INTERVAL 5 MINUTE)
             ");
             $check_query->bindValue(':game_account', $game_account, PDO::PARAM_STR);
-            $check_query->bindValue(':item_name', $item['databaseName'], PDO::PARAM_STR);
+            $check_query->bindValue(':item_name', $item['itemCode'], PDO::PARAM_STR);
             $check_query->execute();
-            
+
             $result = $check_query->fetch(PDO::FETCH_ASSOC);
-            
+
             if ($result['count'] == 0) {
                 return [
-                    'success' => false, 
-                    'error' => "物品 '{$item['databaseName']}' 沒有找到對應的資料記錄"
+                    'success' => false,
+                    'error' => "物品 '{$item['itemCode']}' 沒有找到對應的資料記錄"
                 ];
             }
-            
+
             $verification_data[] = [
-                'item_name' => $item['databaseName'],
+                'item_name' => $item['itemCode'],
                 'expected_quantity' => $item['quantity'],
                 'actual_records' => $result['count'],
                 'total_quantity' => $result['total_quantity']
             ];
         }
-        
+
         return ['success' => true, 'data' => $verification_data];
-        
+
     } catch (PDOException $e) {
         return ['success' => false, 'error' => '驗證資料時發生錯誤: ' . $e->getMessage()];
+    }
+}
+
+/**
+ * 生成測試用的 SQL 語句
+ */
+function generate_test_sqls($pdo, $server_id, $settings, $fields_valid = true, $actual_items = null, $actual_game_account = null) {
+    try {
+        // 檢查基本設定是否存在
+        if (empty($settings) || empty($settings['table_name']) || empty($settings['account_field'])) {
+            return [
+                'error' => '派獎設定不完整，無法生成測試 SQL',
+                'basic_example' => [
+                    'description' => '基本 SQL 範例 (需要先設定派獎資訊)',
+                    'example_sql' => [
+                        'INSERT INTO `your_table` (`account`, `item_code`, `quantity`, `created_at`) VALUES (\'test_user\', \'ITEM_001\', 10, NOW());',
+                        'INSERT INTO `your_table` (`account`, `item_code`, `quantity`, `created_at`) VALUES (\'test_user\', \'GOLD\', 1000, NOW());'
+                    ]
+                ],
+                'steps' => [
+                    '1. 請先在伺服器設定頁面填寫「資料表名稱」和「帳號欄位」',
+                    '2. 填寫「道具編號欄位」和「數量欄位」',
+                    '3. 如需要，可填寫「道具名稱欄位」',
+                    '4. 設定完成後重新測試連線即可獲得完整的測試 SQL'
+                ],
+                'test_cases' => [],
+                'verification_sqls' => []
+            ];
+        }
+
+        $table_name = $settings['table_name'];
+        $account_field = $settings['account_field'];
+        $item_field = $settings['item_field'] ?: 'item_id';
+        $item_name_field = $settings['item_name_field'];
+        $quantity_field = $settings['quantity_field'] ?: 'quantity';
+
+        // 取得動態欄位
+        $fields_query = $pdo->prepare("SELECT * FROM send_gift_fields WHERE server_id = :server_id ORDER BY sort_order");
+        $fields_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+        $fields_query->execute();
+        $dynamic_fields = $fields_query->fetchAll(PDO::FETCH_ASSOC);
+
+        $test_cases = [];
+
+        // 優先使用實際要送出的道具數據
+        if (!empty($actual_items) && is_array($actual_items)) {
+            // 使用實際的道具數據生成SQL
+            $actual_items_formatted = [];
+            foreach ($actual_items as $item) {
+                $actual_items_formatted[] = [
+                    'item_code' => $item['itemCode'] ?? $item['item_code'] ?? '',
+                    'item_name' => $item['itemName'] ?? $item['item_name'] ?? '',
+                    'quantity' => $item['quantity'] ?? 1
+                ];
+            }
+
+            // 決定使用的帳號
+            $display_account = !empty($actual_game_account) ? $actual_game_account : '[請輸入遊戲帳號]';
+
+            $test_cases[] = [
+                'description' => '即將送出的道具 SQL',
+                'test_account' => $display_account,
+                'items' => $actual_items_formatted,
+                'is_actual_data' => true
+            ];
+        } else {
+            // 沒有實際道具時，提供基本範例
+            $test_cases = [
+                [
+                    'description' => '範例: 基本道具派發',
+                    'test_account' => 'test_user_001',
+                    'items' => [
+                        ['item_code' => 'ITEM_001', 'item_name' => '測試道具A', 'quantity' => 10],
+                        ['item_code' => 'ITEM_002', 'item_name' => '測試道具B', 'quantity' => 5]
+                    ],
+                    'is_actual_data' => false
+                ]
+            ];
+        }
+
+        $sql_results = [];
+
+        foreach ($test_cases as $case) {
+            $case_sqls = [];
+
+            foreach ($case['items'] as $item) {
+                // 建構基本欄位
+                $fields = ["`{$account_field}`", "`{$item_field}`", "`{$quantity_field}`"];
+                $values = ["'{$case['test_account']}'", "'{$item['item_code']}'", $item['quantity']];
+
+                // 如果有設定道具名稱欄位，加入道具名稱
+                if (!empty($item_name_field) && !empty($item['item_name'])) {
+                    $fields[] = "`{$item_name_field}`";
+                    $values[] = "'{$item['item_name']}'";
+                }
+
+                // 加入動態欄位
+                foreach ($dynamic_fields as $field) {
+                    $fields[] = "`{$field['field_name']}`";
+                    $values[] = "'{$field['field_value']}'";
+                }
+
+                // 加入時間戳記
+                // $fields[] = "`created_at`";
+                // $values[] = "NOW()";
+
+                // 生成完整的 INSERT SQL
+                $sql = "INSERT INTO `{$table_name}` (" . implode(', ', $fields) . ") VALUES (" . implode(', ', $values) . ");";
+
+                $case_sqls[] = [
+                    'item_info' => $item,
+                    'sql' => $sql,
+                    'description' => "為帳號 {$case['test_account']} 新增 {$item['item_name']} x{$item['quantity']}"
+                ];
+            }
+
+            $sql_results[] = [
+                'case_description' => $case['description'],
+                'test_account' => $case['test_account'],
+                'sqls' => $case_sqls,
+                'total_sqls' => count($case_sqls)
+            ];
+        }
+
+        // 生成檢查 SQL（根據是否有實際道具調整）
+        $verification_sqls = [];
+
+        if (!empty($actual_items) && is_array($actual_items)) {
+            // 決定驗證SQL中使用的帳號
+            $check_account = !empty($actual_game_account) ? $actual_game_account : '[您的遊戲帳號]';
+
+            // 有實際道具時，生成相關的檢查SQL
+            $verification_sqls = [
+                "-- 檢查指定帳號的道具記錄",
+                "SELECT `{$account_field}`, `{$item_field}`" .
+                (!empty($item_name_field) ? ", `{$item_name_field}`" : "") .
+                ", `{$quantity_field}` FROM `{$table_name}` WHERE `{$account_field}` = '{$check_account}' LIMIT 20;",
+                "",
+                "-- 檢查最近派發的道具記錄",
+                "SELECT `{$account_field}`, `{$item_field}`" .
+                (!empty($item_name_field) ? ", `{$item_name_field}`" : "") .
+                ", `{$quantity_field}` FROM `{$table_name}` LIMIT 50;"
+            ];
+        } else {
+            // 沒有實際道具時，生成通用檢查SQL
+            $verification_sqls = [
+                "-- 檢查特定帳號的所有道具",
+                "SELECT * FROM `{$table_name}` WHERE `{$account_field}` = '[測試帳號]' LIMIT 10;",
+                "",
+                "-- 檢查最近的派發記錄",
+                "SELECT `{$account_field}`, `{$item_field}`" .
+                (!empty($item_name_field) ? ", `{$item_name_field}`" : "") .
+                ", `{$quantity_field}` FROM `{$table_name}` LIMIT 20;"
+            ];
+        }
+
+        $result = [
+            'test_cases' => $sql_results,
+            'verification_sqls' => $verification_sqls,
+            'table_info' => [
+                'table_name' => $table_name,
+                'account_field' => $account_field,
+                'item_field' => $item_field,
+                'item_name_field' => $item_name_field,
+                'quantity_field' => $quantity_field,
+                'has_dynamic_fields' => !empty($dynamic_fields),
+                'dynamic_fields_count' => count($dynamic_fields)
+            ],
+            'dynamic_fields' => $dynamic_fields,
+            'summary' => [
+                'total_test_cases' => count($sql_results),
+                'total_test_sqls' => array_sum(array_column($sql_results, 'total_sqls')),
+                'verification_sqls_count' => count(array_filter($verification_sqls, function($sql) {
+                    return !empty(trim($sql)) && strpos(trim($sql), '--') !== 0;
+                }))
+            ]
+        ];
+
+        // 如果欄位檢查失敗，加入警告訊息
+        if (!$fields_valid) {
+            $result['warning'] = [
+                'message' => '⚠️ 欄位檢查失敗，以下 SQL 可能無法正常執行',
+                'suggestions' => [
+                    '請檢查資料表是否存在',
+                    '請確認欄位名稱是否正確',
+                    '執行 SQL 前請先確認資料表結構',
+                    '建議先手動檢查目標資料庫的表格結構'
+                ]
+            ];
+        }
+
+        return $result;
+
+    } catch (Exception $e) {
+        return [
+            'error' => 'Failed to generate test SQLs: ' . $e->getMessage(),
+            'test_cases' => [],
+            'verification_sqls' => []
+        ];
     }
 }
 
