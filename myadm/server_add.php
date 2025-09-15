@@ -1242,23 +1242,14 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 </td></tr>
 <tr><td>
     <button type="button" onclick="addField()" style="background-color: #28a745; color: white; border: none; padding: 8px 15px; cursor: pointer; margin-bottom: 10px;">新增欄位</button>
-    <div id="dynamic_fields_container" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background-color: #fafafa;">
+    <div id="dynamic_fields_container" style="max-height: 400px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background-color: #fafafa; display: none;">
         <div id="dynamic_fields">
-            <div class="field_pair" id="field_pair_1" style="margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; background-color: #f9f9f9;">
-                <div style="display: inline-block; margin-right: 15px;">
-                    欄位名稱：<input name="field_names[]" type="text" value="" style="width: 150px;">
-                </div>
-                <div style="display: inline-block; margin-right: 15px;">
-                    欄位資料：<input name="field_values[]" type="text" value="" style="width: 200px;">
-                </div>
-                <button type="button" class="delete_field" onclick="removeField(1)" disabled style="background-color: #dc3545; color: white; border: none; padding: 5px 10px; cursor: pointer;">刪除</button>
-            </div>
         </div>
     </div>
 </td></tr>
 
 <script>
-let fieldCounter = 1;
+let fieldCounter = 0;
 
 function addField() {
     fieldCounter++;
@@ -1279,34 +1270,39 @@ function addField() {
     dynamicFields.appendChild(newField);
     updateDeleteButtons();
     updateScrollContainer();
-    
-    // 滾動到最新添加的欄位
+
+    // 顯示容器
     const container = document.getElementById('dynamic_fields_container');
+    container.style.display = 'block';
+
+    // 滾動到最新添加的欄位
     container.scrollTop = container.scrollHeight;
 }
 
 function removeField(id) {
     const fieldPairs = document.querySelectorAll('.field_pair');
-    if (fieldPairs.length > 1) {
+    if (fieldPairs.length > 0) {
         document.getElementById('field_pair_' + id).remove();
         updateDeleteButtons();
         updateScrollContainer();
+
+        // 如果沒有欄位了，隱藏容器
+        const remainingFields = document.querySelectorAll('.field_pair');
+        if (remainingFields.length === 0) {
+            const container = document.getElementById('dynamic_fields_container');
+            container.style.display = 'none';
+        }
     }
 }
 
 function updateDeleteButtons() {
     const fieldPairs = document.querySelectorAll('.field_pair');
     const deleteButtons = document.querySelectorAll('.delete_field');
-    
+
     deleteButtons.forEach(button => {
-        button.disabled = fieldPairs.length <= 1;
-        if (button.disabled) {
-            button.style.backgroundColor = '#6c757d';
-            button.style.cursor = 'not-allowed';
-        } else {
-            button.style.backgroundColor = '#dc3545';
-            button.style.cursor = 'pointer';
-        }
+        button.disabled = false;
+        button.style.backgroundColor = '#dc3545';
+        button.style.cursor = 'pointer';
     });
 }
 
@@ -1356,13 +1352,16 @@ function loadExistingDynamicFields() {
             dynamicFields.appendChild(newField);
         });
         
-        // 如果沒有載入任何欄位，添加一個預設欄位
-        if (fieldCounter === 0) {
-            addField();
-        }
-        
+        // 載入完成，不添加預設欄位
+
         updateDeleteButtons();
         updateScrollContainer();
+
+        // 如果有載入欄位，顯示容器
+        if (fieldCounter > 0) {
+            const container = document.getElementById('dynamic_fields_container');
+            container.style.display = 'block';
+        }
     }
 }
 

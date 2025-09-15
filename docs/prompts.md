@@ -1,1 +1,2 @@
-1. 先幫我add commit push，再幫我看到/myadm/send_gift.php，如果輸入的帳號資料有逗號，代表多組帳號，表示同樣的禮物要派發給多組帳號，幫我加入判斷實作這一段
+1. 看到/myadm/server_add.php，最下方有一組欄位名稱與欄位資料，目前預設是至少有一組，幫我改成預設最少零組，有需要的再用新增欄位新增即可，幫我連dynamic_fields_container這個id的element都隱藏
+2. add commit push，於手動派獎下方多一個派獎記錄，紀載發放的紀錄、時間這些還有發放者的IP，越詳盡越好，table的樣式請參照其他頁面的，並且幫我用前後端分離的方式處理
