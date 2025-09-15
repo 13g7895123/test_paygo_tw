@@ -554,6 +554,7 @@ function handle_send_gift($pdo) {
     $server_id = _r('server_id') ?? '';
     $server_name = _r('server_name') ?? '';
     $game_account = _r('game_account') ?? '';
+    $game_accounts_json = _r('game_accounts') ?? '';
     $items_json = _r('items') ?? '';
     $operator_id = isset($_SESSION['login_id']) ? $_SESSION['login_id'] : null;
     $operator_name = isset($_SESSION['login_name']) ? $_SESSION['login_name'] : 'System';
@@ -569,69 +570,131 @@ function handle_send_gift($pdo) {
     if (!check_server_permission($pdo, $server_id, $user_id, $is_admin)) {
         api_error('Access denied: You do not have permission to manage this server', 403);
     }
-    
+
     // 解析物品資料
     $items = json_decode($items_json, true);
     if (!is_array($items) || empty($items)) {
         api_error('Invalid items data');
     }
-    
+
+    // 處理多個帳號
+    $accounts_to_process = [];
+    if (!empty($game_accounts_json)) {
+        $game_accounts = json_decode($game_accounts_json, true);
+        if (is_array($game_accounts) && !empty($game_accounts)) {
+            $accounts_to_process = $game_accounts;
+        } else {
+            $accounts_to_process = [$game_account];
+        }
+    } else {
+        $accounts_to_process = [$game_account];
+    }
+
+    // 過濾空帳號
+    $accounts_to_process = array_filter($accounts_to_process, function($account) {
+        return !empty(trim($account));
+    });
+
+    if (empty($accounts_to_process)) {
+        api_error('No valid accounts to process');
+    }
+
     // 計算總物品數量
     $total_items = array_sum(array_column($items, 'quantity'));
-    
+
     // 開始交易
     $pdo->beginTransaction();
-    
+
     try {
-        // 記錄派獎日誌
-        $log_query = $pdo->prepare("
-            INSERT INTO send_gift_logs (
-                server_id, server_name, game_account, items, total_items, 
-                status, operator_id, operator_name
-            ) VALUES (
-                :server_id, :server_name, :game_account, :items, :total_items, 
-                'pending', :operator_id, :operator_name
-            )
-        ");
-        $log_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
-        $log_query->bindValue(':server_name', $server_name, PDO::PARAM_STR);
-        $log_query->bindValue(':game_account', $game_account, PDO::PARAM_STR);
-        $log_query->bindValue(':items', $items_json, PDO::PARAM_STR);
-        $log_query->bindValue(':total_items', $total_items, PDO::PARAM_INT);
-        $log_query->bindValue(':operator_id', $operator_id, PDO::PARAM_STR);
-        $log_query->bindValue(':operator_name', $operator_name, PDO::PARAM_STR);
-        $log_query->execute();
-        
-        $log_id = $pdo->lastInsertId();
-        
-        // 實際派發物品到遊戲伺服器
-        $game_result = execute_gift_to_game_server($pdo, $server_id, $game_account, $items, $log_id);
-        
-        // 更新派獎狀態
-        $update_query = $pdo->prepare("
-            UPDATE send_gift_logs 
-            SET status = :status, error_message = :error_message, updated_at = CURRENT_TIMESTAMP 
-            WHERE id = :id
-        ");
-        $update_query->bindValue(':id', $log_id, PDO::PARAM_INT);
-        $update_query->bindValue(':status', $game_result['success'] ? 'success' : 'failed', PDO::PARAM_STR);
-        $update_query->bindValue(':error_message', $game_result['error'] ?? null, PDO::PARAM_STR);
-        $update_query->execute();
-        
-        if (!$game_result['success']) {
-            api_error('Game server operation failed: ' . $game_result['error']);
+        $log_ids = [];
+        $success_count = 0;
+        $error_messages = [];
+
+        // 為每個帳號分別處理派獎
+        foreach ($accounts_to_process as $account) {
+            $account = trim($account);
+            if (empty($account)) continue;
+
+            // 記錄派獎日誌
+            $client_ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['HTTP_X_REAL_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+            if (strpos($client_ip, ',') !== false) {
+                $client_ip = explode(',', $client_ip)[0];
+            }
+            $client_ip = trim($client_ip);
+
+            $log_query = $pdo->prepare("
+                INSERT INTO send_gift_logs (
+                    server_id, server_name, game_account, items, total_items,
+                    status, operator_id, operator_name, operator_ip
+                ) VALUES (
+                    :server_id, :server_name, :game_account, :items, :total_items,
+                    'pending', :operator_id, :operator_name, :operator_ip
+                )
+            ");
+            $log_query->bindValue(':server_id', $server_id, PDO::PARAM_STR);
+            $log_query->bindValue(':server_name', $server_name, PDO::PARAM_STR);
+            $log_query->bindValue(':game_account', $account, PDO::PARAM_STR);
+            $log_query->bindValue(':items', $items_json, PDO::PARAM_STR);
+            $log_query->bindValue(':total_items', $total_items, PDO::PARAM_INT);
+            $log_query->bindValue(':operator_id', $operator_id, PDO::PARAM_STR);
+            $log_query->bindValue(':operator_name', $operator_name, PDO::PARAM_STR);
+            $log_query->bindValue(':operator_ip', $client_ip, PDO::PARAM_STR);
+            $log_query->execute();
+
+            $log_id = $pdo->lastInsertId();
+            $log_ids[] = $log_id;
+
+            // 實際派發物品到遊戲伺服器
+            $game_result = execute_gift_to_game_server($pdo, $server_id, $account, $items, $log_id);
+
+            // 更新派獎狀態
+            $update_query = $pdo->prepare("
+                UPDATE send_gift_logs
+                SET status = :status, error_message = :error_message, updated_at = CURRENT_TIMESTAMP
+                WHERE id = :id
+            ");
+            $update_query->bindValue(':id', $log_id, PDO::PARAM_INT);
+            $update_query->bindValue(':status', $game_result['success'] ? 'success' : 'failed', PDO::PARAM_STR);
+            $update_query->bindValue(':error_message', $game_result['error'] ?? null, PDO::PARAM_STR);
+            $update_query->execute();
+
+            if ($game_result['success']) {
+                $success_count++;
+            } else {
+                $error_messages[] = "帳號 {$account}: " . $game_result['error'];
+            }
         }
-        
-        $pdo->commit();
-        
-        api_success([
-            'log_id' => $log_id,
-            'server_id' => $server_id,
-            'server_name' => $server_name,
-            'game_account' => $game_account,
-            'total_items' => $total_items,
-            'status' => 'success'
-        ], 'Gift sent successfully');
+
+        // 檢查結果
+        if ($success_count === 0) {
+            $pdo->rollback();
+            api_error('All gift distributions failed: ' . implode('; ', $error_messages));
+        } else if ($success_count < count($accounts_to_process)) {
+            // 部分成功，提交但返回警告
+            $pdo->commit();
+            api_success([
+                'log_id' => $log_ids[0], // 返回第一個log_id用於查詢
+                'log_ids' => $log_ids,
+                'success_count' => $success_count,
+                'total_count' => count($accounts_to_process),
+                'error_messages' => $error_messages
+            ], "部分派獎成功：{$success_count}/" . count($accounts_to_process) . " 個帳號派獎成功");
+        } else {
+            // 全部成功
+            $pdo->commit();
+
+            api_success([
+                'log_id' => $log_ids[0], // 返回第一個log_id用於查詢
+                'log_ids' => $log_ids,
+                'server_id' => $server_id,
+                'server_name' => $server_name,
+                'game_account' => $game_account,
+                'success_count' => $success_count,
+                'total_count' => count($accounts_to_process),
+                'total_items' => $total_items,
+                'status' => 'success'
+            ], count($accounts_to_process) > 1 ? "全部派獎成功：{$success_count} 個帳號派獎完成" : 'Gift sent successfully');
+        }
         
     } catch (Exception $e) {
         $pdo->rollback();
@@ -685,11 +748,11 @@ function handle_get_gift_logs($pdo) {
     $params[':offset'] = $offset;
     
     $query = $pdo->prepare("
-        SELECT id, server_id, server_name, game_account, items, total_items, 
-               status, error_message, operator_name, created_at, updated_at
-        FROM send_gift_logs 
-        $where_sql 
-        ORDER BY created_at DESC 
+        SELECT id, server_id, server_name, game_account, items, total_items,
+               status, error_message, operator_name, operator_ip, created_at, updated_at
+        FROM send_gift_logs
+        $where_sql
+        ORDER BY created_at DESC
         LIMIT :limit OFFSET :offset
     ");
     

@@ -48,7 +48,11 @@ top_html();
                                     <div class="col-md-6">
                                         <div class="form-group">
                                             <label for="gameAccount">遊戲帳號 <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control" id="gameAccount" name="gameAccount" placeholder="請輸入遊戲帳號" required>
+                                            <input type="text" class="form-control" id="gameAccount" name="gameAccount" placeholder="請輸入遊戲帳號，多個帳號請用逗號分隔" required>
+                                            <small class="help-block text-muted">
+                                                <i class="fa fa-info-circle"></i>
+                                                可輸入多個帳號，用逗號分隔（例：player1,player2,player3）
+                                            </small>
                                         </div>
                                     </div>
                                 </div>
@@ -128,6 +132,96 @@ top_html();
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 派獎記錄區域 -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3 class="panel-title">
+                            <i class="fa fa-history"></i> 派獎記錄
+                        </h3>
+                        <div class="panel-actions">
+                            <button type="button" class="btn btn-sm btn-default" id="refreshRecordsBtn" title="重新整理">
+                                <i class="fa fa-refresh"></i> 重新整理
+                            </button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <!-- 搜尋篩選區域 -->
+                        <div class="search-filters">
+                            <form class="form-inline" id="recordsSearchForm">
+                                <div class="form-group">
+                                    <label for="filterServer">伺服器：</label>
+                                    <select class="form-control" id="filterServer" name="server_id">
+                                        <option value="">全部伺服器</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="filterAccount">遊戲帳號：</label>
+                                    <input type="text" class="form-control" id="filterAccount" name="game_account" placeholder="輸入遊戲帳號">
+                                </div>
+                                <div class="form-group">
+                                    <label for="filterStatus">狀態：</label>
+                                    <select class="form-control" id="filterStatus" name="status">
+                                        <option value="">全部狀態</option>
+                                        <option value="completed">已完成</option>
+                                        <option value="failed">失敗</option>
+                                        <option value="pending">處理中</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa fa-search"></i> 搜尋
+                                </button>
+                                <button type="button" class="btn btn-default" id="clearFiltersBtn">
+                                    <i class="fa fa-times"></i> 清除
+                                </button>
+                            </form>
+                        </div>
+
+                        <!-- 資料統計 -->
+                        <div id="recordsStats" class="search-stats" style="display: none;">
+                            載入中...
+                        </div>
+
+                        <!-- 記錄表格 -->
+                        <div class="table-responsive">
+                            <table class="table table-hover records-table" id="recordsTable">
+                                <thead>
+                                    <tr>
+                                        <th width="8%">記錄ID</th>
+                                        <th width="12%">伺服器</th>
+                                        <th width="15%">遊戲帳號</th>
+                                        <th width="20%">道具資訊</th>
+                                        <th width="8%">狀態</th>
+                                        <th width="12%">派發者</th>
+                                        <th width="12%">操作IP</th>
+                                        <th width="13%">派發時間</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recordsTableBody">
+                                    <tr>
+                                        <td colspan="8" class="text-center">
+                                            <div class="loading-spinner">
+                                                <i class="fa fa-spinner fa-spin fa-2x"></i>
+                                                <p>載入派獎記錄中...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- 分頁 -->
+                        <nav aria-label="派獎記錄分頁">
+                            <ul class="pagination" id="recordsPagination">
+                                <!-- 分頁將通過 JavaScript 動態產生 -->
+                            </ul>
+                        </nav>
                     </div>
                 </div>
             </div>
@@ -875,6 +969,7 @@ let currentStage = 1;
 let stageData = {
     server: null,
     gameAccount: '',
+    gameAccounts: [],
     items: []
 };
 
@@ -993,7 +1088,15 @@ function bindEventHandlers() {
     
     // 遊戲帳號輸入
     $('#gameAccount').on('input', function() {
-        stageData.gameAccount = $(this).val().trim();
+        const rawInput = $(this).val().trim();
+        stageData.gameAccount = rawInput;
+
+        // 解析多個帳號
+        if (rawInput.includes(',')) {
+            stageData.gameAccounts = rawInput.split(',').map(acc => acc.trim()).filter(acc => acc.length > 0);
+        } else {
+            stageData.gameAccounts = rawInput ? [rawInput] : [];
+        }
     });
     
     // 新增道具按鈕
@@ -1088,6 +1191,7 @@ function resetStageData() {
     stageData = {
         server: null,
         gameAccount: '',
+        gameAccounts: [],
         items: []
     };
 }
@@ -1119,7 +1223,7 @@ function validateStage1() {
     }
     
     // 檢查遊戲帳號
-    if (!stageData.gameAccount) {
+    if (!stageData.gameAccount || (stageData.gameAccounts && stageData.gameAccounts.length === 0)) {
         errorMessages.push('請輸入遊戲帳號');
         if (isValid) $('#gameAccount').focus();
         isValid = false;
@@ -1155,7 +1259,20 @@ function goToStage1() {
 // 更新確認顯示
 function updateConfirmationDisplay() {
     $('#confirmServer').text(stageData.server ? stageData.server.name : '-');
-    $('#confirmGameAccount').text(stageData.gameAccount || '-');
+
+    // 顯示遊戲帳號（支援多個帳號）
+    if (stageData.gameAccounts && stageData.gameAccounts.length > 0) {
+        if (stageData.gameAccounts.length === 1) {
+            $('#confirmGameAccount').text(stageData.gameAccounts[0]);
+        } else {
+            $('#confirmGameAccount').html(`
+                <strong>${stageData.gameAccounts.length} 個帳號：</strong><br>
+                ${stageData.gameAccounts.join('、')}
+            `);
+        }
+    } else {
+        $('#confirmGameAccount').text(stageData.gameAccount || '-');
+    }
     
     // 顯示選擇的道具
     if (stageData.items.length > 0) {
@@ -1217,12 +1334,20 @@ function validateForm() {
 
 // 處理最終送出
 function handleFinalSubmit() {
+    // 準備帳號顯示文字
+    let accountText;
+    if (stageData.gameAccounts && stageData.gameAccounts.length > 1) {
+        accountText = `${stageData.gameAccounts.length} 個帳號：${stageData.gameAccounts.join('、')}`;
+    } else {
+        accountText = stageData.gameAccount;
+    }
+
     // 顯示確認對話框
     const confirmText = `確定要送出禮物嗎？\n\n` +
         `伺服器：${stageData.server.name}\n` +
-        `遊戲帳號：${stageData.gameAccount}\n` +
+        `遊戲帳號：${accountText}\n` +
         `選擇道具：${stageData.items.length} 項`;
-    
+
     if (confirm(confirmText)) {
         submitGiftData();
     }
@@ -1285,6 +1410,7 @@ function submitGiftData() {
             server_id: stageData.server.id,
             server_name: stageData.server.name,
             game_account: stageData.gameAccount,
+            game_accounts: stageData.gameAccounts && stageData.gameAccounts.length > 0 ? JSON.stringify(stageData.gameAccounts) : null,
             items: JSON.stringify(stageData.items)
         };
         
@@ -1300,23 +1426,41 @@ function submitGiftData() {
             if (response.success) {
                 // 保存log ID
                 currentLogId = response.data.log_id;
-                
+
                 // 隱藏送出按鈕，顯示查詢按鈕和發送下一筆按鈕
                 $('#finalSubmitBtn').hide();
                 $('#queryLogBtn').show();
                 $('#sendNextBtn').show();
-                
+
                 // 顯示成功訊息
-                showNotification('禮物送出成功！', 'success');
-                
+                showNotification(response.message || '禮物送出成功！', 'success');
+
+                // 準備帳號顯示文字
+                let accountText;
+                if (stageData.gameAccounts && stageData.gameAccounts.length > 1) {
+                    accountText = `${stageData.gameAccounts.length} 個帳號：${stageData.gameAccounts.join('、')}`;
+                } else {
+                    accountText = stageData.gameAccount;
+                }
+
+                // 準備結果資訊
+                let resultInfo = '';
+                if (response.data.success_count && response.data.total_count) {
+                    resultInfo = `\n派獎結果：${response.data.success_count}/${response.data.total_count} 個帳號成功`;
+                    if (response.data.error_messages && response.data.error_messages.length > 0) {
+                        resultInfo += `\n錯誤訊息：\n${response.data.error_messages.join('\n')}`;
+                    }
+                }
+
                 // 顯示詳細資訊
-                alert('禮物送出成功！\n\n' + 
+                alert('禮物送出成功！\n\n' +
                       `伺服器：${stageData.server.name}\n` +
-                      `遊戲帳號：${stageData.gameAccount}\n` +
+                      `遊戲帳號：${accountText}\n` +
                       `道具數量：${stageData.items.length} 項\n` +
-                      `記錄編號：${response.data.log_id}\n\n` +
+                      `記錄編號：${response.data.log_id}` +
+                      resultInfo + '\n\n' +
                       `可點擊「查詢執行記錄」按鈕查看詳細的SQL執行資訊`);
-                
+
                 restoreButton();
             } else {
                 showNotification('禮物送出失敗：' + (response.message || '未知錯誤'), 'error');
@@ -2255,6 +2399,390 @@ function displayConnectionTestModal(data) {
     
     // 顯示modal
     $('#connectionTestModal').modal('show');
+}
+
+// ===== 派獎記錄相關功能 =====
+
+// 派獎記錄管理變數
+let recordsData = {
+    currentPage: 1,
+    itemsPerPage: 20,
+    totalItems: 0,
+    totalPages: 0,
+    filters: {
+        server_id: '',
+        game_account: '',
+        status: ''
+    }
+};
+
+// 初始化派獎記錄功能
+$(document).ready(function() {
+    initializeGiftRecords();
+});
+
+function initializeGiftRecords() {
+    // 載入派獎記錄
+    loadGiftRecords();
+
+    // 載入伺服器選項到篩選器
+    loadServersToFilter();
+
+    // 綁定事件處理器
+    bindGiftRecordsEvents();
+}
+
+function bindGiftRecordsEvents() {
+    // 重新整理按鈕
+    $('#refreshRecordsBtn').click(function() {
+        loadGiftRecords();
+    });
+
+    // 搜尋表單
+    $('#recordsSearchForm').submit(function(e) {
+        e.preventDefault();
+
+        // 更新篩選條件
+        recordsData.filters.server_id = $('#filterServer').val();
+        recordsData.filters.game_account = $('#filterAccount').val().trim();
+        recordsData.filters.status = $('#filterStatus').val();
+
+        // 重置頁碼並載入
+        recordsData.currentPage = 1;
+        loadGiftRecords();
+    });
+
+    // 清除篩選
+    $('#clearFiltersBtn').click(function() {
+        $('#recordsSearchForm')[0].reset();
+        recordsData.filters = {
+            server_id: '',
+            game_account: '',
+            status: ''
+        };
+        recordsData.currentPage = 1;
+        loadGiftRecords();
+    });
+}
+
+function loadServersToFilter() {
+    const filterSelect = $('#filterServer');
+
+    // 使用現有的伺服器列表
+    if (typeof serverItems !== 'undefined') {
+        // 如果已經載入伺服器列表，直接使用
+        populateServerFilter();
+    } else {
+        // 從 API 載入伺服器資料
+        $.ajax({
+            url: 'api/gift_api.php',
+            method: 'GET',
+            data: { action: 'get_servers' },
+            dataType: 'json'
+        })
+        .done(function(response) {
+            if (response && response.success && response.data) {
+                const servers = response.data;
+                filterSelect.find('option:not(:first)').remove();
+
+                servers.forEach(function(server) {
+                    filterSelect.append(`<option value="${server.id}">${server.name}</option>`);
+                });
+            }
+        })
+        .fail(function() {
+            console.error('Failed to load servers for filter');
+        });
+    }
+}
+
+function populateServerFilter() {
+    const filterSelect = $('#filterServer');
+    const serverSelect = $('#serverSelect');
+
+    filterSelect.find('option:not(:first)').remove();
+    serverSelect.find('option:not(:first)').each(function() {
+        const value = $(this).val();
+        const text = $(this).text();
+        if (value) {
+            filterSelect.append(`<option value="${value}">${text}</option>`);
+        }
+    });
+}
+
+function loadGiftRecords(page = null) {
+    if (page) {
+        recordsData.currentPage = page;
+    }
+
+    // 顯示載入狀態
+    showRecordsLoading();
+
+    // 準備 API 參數
+    const params = {
+        action: 'get_gift_logs',
+        page: recordsData.currentPage,
+        limit: recordsData.itemsPerPage
+    };
+
+    // 添加篩選條件
+    if (recordsData.filters.server_id) {
+        params.server_id = recordsData.filters.server_id;
+    }
+    if (recordsData.filters.game_account) {
+        params.game_account = recordsData.filters.game_account;
+    }
+    if (recordsData.filters.status) {
+        params.status = recordsData.filters.status;
+    }
+
+    // 發送 API 請求
+    $.ajax({
+        url: 'api/gift_api.php',
+        method: 'GET',
+        data: params,
+        dataType: 'json',
+        xhrFields: {
+            withCredentials: true
+        }
+    })
+    .done(function(response) {
+        if (response && response.success) {
+            displayGiftRecords(response.data);
+        } else {
+            showRecordsError('載入派獎記錄失敗：' + (response.message || '未知錯誤'));
+        }
+    })
+    .fail(function(xhr, status, error) {
+        console.error('Load gift records error:', error);
+        showRecordsError('載入派獎記錄失敗：連線錯誤');
+    });
+}
+
+function showRecordsLoading() {
+    const tableBody = $('#recordsTableBody');
+    tableBody.html(`
+        <tr>
+            <td colspan="8" class="text-center">
+                <div class="loading-spinner">
+                    <i class="fa fa-spinner fa-spin fa-2x"></i>
+                    <p>載入派獎記錄中...</p>
+                </div>
+            </td>
+        </tr>
+    `);
+
+    // 隱藏統計資訊和分頁
+    $('#recordsStats').hide();
+    $('#recordsPagination').empty();
+}
+
+function showRecordsError(message) {
+    const tableBody = $('#recordsTableBody');
+    tableBody.html(`
+        <tr>
+            <td colspan="8" class="text-center error-message">
+                <i class="fa fa-exclamation-triangle fa-2x text-danger"></i>
+                <p class="text-danger">${message}</p>
+                <button type="button" class="btn btn-sm btn-default" onclick="loadGiftRecords()">
+                    <i class="fa fa-refresh"></i> 重新載入
+                </button>
+            </td>
+        </tr>
+    `);
+}
+
+function displayGiftRecords(data) {
+    const { logs, pagination } = data;
+    const tableBody = $('#recordsTableBody');
+
+    // 更新分頁資訊
+    recordsData.totalItems = pagination.total_items;
+    recordsData.totalPages = pagination.total_pages;
+
+    // 顯示統計資訊
+    updateRecordsStats(pagination);
+
+    // 如果沒有記錄
+    if (!logs || logs.length === 0) {
+        tableBody.html(`
+            <tr>
+                <td colspan="8" class="text-center no-data">
+                    <i class="fa fa-inbox fa-3x text-muted"></i>
+                    <p class="text-muted">目前沒有派獎記錄</p>
+                </td>
+            </tr>
+        `);
+        return;
+    }
+
+    // 生成表格內容
+    let html = '';
+    logs.forEach(function(log) {
+        html += generateRecordRow(log);
+    });
+
+    tableBody.html(html);
+
+    // 更新分頁
+    updateRecordsPagination();
+}
+
+function generateRecordRow(log) {
+    // 處理道具資訊
+    let itemsDisplay = '';
+    if (log.items && Array.isArray(log.items)) {
+        const itemNames = log.items.map(item => {
+            let display = item.itemCode || '未知道具';
+            if (item.itemName && item.itemName !== item.itemCode) {
+                display = `${item.itemName} (${item.itemCode})`;
+            }
+            return `${display} x${item.quantity}`;
+        });
+        itemsDisplay = itemNames.join('<br>');
+    } else {
+        itemsDisplay = `共 ${log.total_items} 項道具`;
+    }
+
+    // 處理狀態
+    const statusBadge = getStatusBadge(log.status);
+
+    // 處理時間
+    const createdTime = formatDateTime(log.created_at);
+
+    // 處理操作者和IP
+    const operatorInfo = log.operator_name || '未知';
+    const operatorIp = log.operator_ip || '未記錄';
+
+    return `
+        <tr data-log-id="${log.id}">
+            <td class="text-center">
+                <strong>#${log.id}</strong>
+            </td>
+            <td>
+                <span class="server-name" title="伺服器ID: ${log.server_id}">
+                    ${log.server_name || '未知伺服器'}
+                </span>
+            </td>
+            <td>
+                <span class="game-account">${log.game_account}</span>
+            </td>
+            <td>
+                <small class="items-info">${itemsDisplay}</small>
+            </td>
+            <td class="text-center">
+                ${statusBadge}
+            </td>
+            <td class="text-center">
+                <small>${operatorInfo}</small>
+            </td>
+            <td class="text-center">
+                <code class="operator-ip">${operatorIp}</code>
+            </td>
+            <td class="text-center">
+                <small>${createdTime}</small>
+            </td>
+        </tr>
+    `;
+}
+
+function getStatusBadge(status) {
+    switch (status) {
+        case 'completed':
+            return '<span class="label label-success">已完成</span>';
+        case 'failed':
+            return '<span class="label label-danger">失敗</span>';
+        case 'pending':
+            return '<span class="label label-warning">處理中</span>';
+        default:
+            return '<span class="label label-info">' + (status || '未知') + '</span>';
+    }
+}
+
+function formatDateTime(dateTimeStr) {
+    if (!dateTimeStr) return '未知時間';
+
+    try {
+        const date = new Date(dateTimeStr);
+        return date.toLocaleDateString('zh-TW', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    } catch (e) {
+        return dateTimeStr;
+    }
+}
+
+function updateRecordsStats(pagination) {
+    const stats = $('#recordsStats');
+    const { current_page, total_pages, total_items, items_per_page } = pagination;
+
+    const start = (current_page - 1) * items_per_page + 1;
+    const end = Math.min(current_page * items_per_page, total_items);
+
+    const statsText = `共找到 ${total_items} 筆記錄，顯示第 ${start} - ${end} 筆 (第 ${current_page} 頁，共 ${total_pages} 頁)`;
+
+    stats.text(statsText).show();
+}
+
+function updateRecordsPagination() {
+    const pagination = $('#recordsPagination');
+
+    if (recordsData.totalPages <= 1) {
+        pagination.empty();
+        return;
+    }
+
+    let html = '';
+
+    // 上一頁
+    const prevDisabled = recordsData.currentPage === 1 ? 'disabled' : '';
+    html += `
+        <li class="${prevDisabled}">
+            <a href="#" onclick="loadGiftRecords(${recordsData.currentPage - 1})" ${prevDisabled ? 'aria-disabled="true"' : ''}>
+                <i class="fa fa-chevron-left"></i> 上一頁
+            </a>
+        </li>
+    `;
+
+    // 頁碼
+    const startPage = Math.max(1, recordsData.currentPage - 2);
+    const endPage = Math.min(recordsData.totalPages, recordsData.currentPage + 2);
+
+    if (startPage > 1) {
+        html += `<li><a href="#" onclick="loadGiftRecords(1)">1</a></li>`;
+        if (startPage > 2) {
+            html += `<li class="disabled"><a href="#">...</a></li>`;
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        const activeClass = i === recordsData.currentPage ? 'active' : '';
+        html += `<li class="${activeClass}"><a href="#" onclick="loadGiftRecords(${i})">${i}</a></li>`;
+    }
+
+    if (endPage < recordsData.totalPages) {
+        if (endPage < recordsData.totalPages - 1) {
+            html += `<li class="disabled"><a href="#">...</a></li>`;
+        }
+        html += `<li><a href="#" onclick="loadGiftRecords(${recordsData.totalPages})">${recordsData.totalPages}</a></li>`;
+    }
+
+    // 下一頁
+    const nextDisabled = recordsData.currentPage === recordsData.totalPages ? 'disabled' : '';
+    html += `
+        <li class="${nextDisabled}">
+            <a href="#" onclick="loadGiftRecords(${recordsData.currentPage + 1})" ${nextDisabled ? 'aria-disabled="true"' : ''}>
+                下一頁 <i class="fa fa-chevron-right"></i>
+            </a>
+        </li>
+    `;
+
+    pagination.html(html);
 }
 
 </script>
