@@ -236,11 +236,11 @@ switch ($datainfo["pay_cp"]) {
 
           'user_bank_account' => $datainfo["user_bank_account"] ?? 'mock_account',
 
-          'pay_time' => $nowtime,
+          'paid_at' => $nowtime,
 
           'sign' => 'system_mock_signature',  // 模擬簽名
 
-          'remark' => '模擬付款成功'
+          'RtnMsg' => '模擬付款成功'
 
       ];
 

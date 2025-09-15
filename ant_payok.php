@@ -103,7 +103,7 @@ if(!$MerchantTradeNo) alert("資料錯誤-8000301。", 0);
 				// 獲取繳費期限 - 預設3天後到期
 				$ExpireDate = $sqd["ExpireDate"] ?? '';
 				if (empty($ExpireDate)) {
-					$ExpireDate = date('Y-m-d H:i:s', strtotime('+3 days'));
+					$ExpireDate = date('Y-m-d H:i:s', strtotime('+1 days'));
 					// 更新資料庫中的期限
 					if (!empty($BankCode) && !empty($vAccount)) {
 						$sq2 = $pdo->prepare("update servers_log set PaymentNo=?, ExpireDate=? where orderid=?");
@@ -116,7 +116,6 @@ if(!$MerchantTradeNo) alert("資料錯誤-8000301。", 0);
 					echo web::payment_inf_render(0, $BankCode, $vAccount, $ExpireDate);
 				} else {
 					echo "<div style='color:white; margin-top:20px;'>";
-					echo "<p>ANT 約定帳戶轉帳 - 等待銀行資訊</p>";
 					echo "</div>";
 				}
 			} else {

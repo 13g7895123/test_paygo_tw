@@ -76,39 +76,8 @@ try {
     }
 
     // 檢查是否為模擬付款
-    $is_mock_payment = (isset($_POST['mockpay']) && $_POST['mockpay'] == 1) ||
-                       (isset($callback_data['mockpay']) && $callback_data['mockpay'] == 1);
+    $is_mock_payment = (isset($_POST['RtnMsg']) && $_POST['RtnMsg'] == '模擬付款成功');
 
-    if ($is_mock_payment) {
-        // 模擬付款使用預設測試參數
-        $ant_username = 'antpay018';
-        $ant_hashkey = 'lyAJwWnVAKNScXjE6t2rxUOAeesvIP9S';
-        $ant_hashiv = 'yhncs1WpMo60azxEczokzIlVVvVuW69p';
-        error_log("[ANT-CALLBACK] 模擬付款使用預設測試參數");
-    } else {
-        // 正常付款從資料庫取得ANT設定
-        $payment_info = getSpecificBankPaymentInfo($pdo, $order_data['auton'], 'ant');
-
-        if (!$payment_info || !isset($payment_info['payment_config'])) {
-            throw new Exception("ANT設定錯誤");
-        }
-
-        // 使用資料庫的參數，所有參數必須從資料庫取得
-        $ant_username = $payment_info['payment_config']['username'] ?? null;
-        $ant_hashkey = $payment_info['payment_config']['hashkey'] ?? null;
-        $ant_hashiv = $payment_info['payment_config']['hashiv'] ?? null;
-
-        // 檢查必要參數是否存在
-        if (!$ant_username) {
-            throw new Exception("ANT設定錯誤：缺少username參數");
-        }
-        if (!$ant_hashkey) {
-            throw new Exception("ANT設定錯誤：缺少hashkey參數");
-        }
-        if (!$ant_hashiv) {
-            throw new Exception("ANT設定錯誤：缺少hashiv參數");
-        }
-    }
     $is_production = ($order_data['gstats_bank'] == 1);
 
     // 解析ANT回調資料格式
@@ -128,53 +97,16 @@ try {
     $new_status = $order_data['stats']; // 預設保持原狀態
     $status_description = '';
 
-    switch ($payment_status_code) {
-        case 4: // ANT: 已完成
-            $new_status = 1; // 本地: 付款完成
-            $status_description = '支付成功';
-            break;
-
-        case 5: // ANT: 已取消
-        case 7: // ANT: 金額不符合
-        case 8: // ANT: 銀行不符合
-            $new_status = 2; // 本地: 付款失敗
-            $status_description = '支付失敗';
-            break;
-
-        case 6: // ANT: 已退款
-            $new_status = -4; // 本地: 已退款
-            $status_description = '已退款';
-            break;
-
-        case 1: // ANT: 已建立
-        case 2: // ANT: 處理中
-        case 3: // ANT: 待繳費
-        default:
-            $new_status = 0; // 本地: 等待付款
-            $status_description = '等待付款';
-            break;
+    if ($payment_status_code == 4){
+        $new_status = ($is_mock_payment) ? 3 : 1; // 模擬付款成功設為3，真實付款成功設為1
+        $rtn_msg = ($is_mock_payment) ? '模擬付款成功' : '交易成功';
+    }else {
+        $new_status = 2;
+        $rtn_msg = ($is_mock_payment) ? '模擬付款失敗' : '交易失敗';
     }
-
-    // Debug: 記錄狀態映射結果
-    error_log("[ANT-CALLBACK-DEBUG] 狀態映射: ANT status={$payment_status_code} => 本地 status={$new_status} ({$status_description})");
 
     // 記錄回調前的狀態
     $status_before = $order_data['stats'];
-
-    // 根據狀態設定回傳訊息
-    if ($new_status == 1) {
-        if ($payment_status_code == 4) {
-            $rtn_msg = '交易成功';
-        } else {
-            $rtn_msg = $is_mock_payment ? '模擬付款成功' : '支付成功';
-        }
-    } else if ($new_status == 2) {
-        $rtn_msg = $is_mock_payment ? '模擬付款失敗' : '支付失敗';
-    } else if ($new_status == 0) {
-        $rtn_msg = '等待付款';
-    } else {
-        $rtn_msg = $status_description;
-    }
 
     // 開始資料庫交易
     $pdo->beginTransaction();
@@ -182,7 +114,7 @@ try {
     try {
         // 更新訂單狀態和訊息 (更完整的欄位更新，參考ebpay_r.php)
         $payment_date = $callback_data['paid_at'];
-        $payment_type_charge_fee = 0; // ANT通常不收手續費
+        $payment_type_charge_fee = $callback_data['fee'] ?? 0; // ANT通常不收手續費
         $rtn_code = ($new_status == 1) ? 1 : 0;
 
         $update_query = $pdo->prepare("UPDATE servers_log SET stats = ?, RtnMsg = ?, paytimes = ?, hmoney = ?, rmoney = ?, rCheckMacValue = ?, RtnCode = ? WHERE auton = ?");
