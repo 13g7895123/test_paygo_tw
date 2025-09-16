@@ -305,6 +305,12 @@ function top_html()
 							<span>手動派獎</span>
 						</a>
 					</li>
+                    <li>
+						<a href="gift_records">
+                            <i class="main-icon fa-solid fa-clipboard-list"></i>
+							<span>派獎記錄</span>
+						</a>
+					</li>
 				</ul>
 				<!-- SECOND MAIN LIST -->
 				<ul class="nav nav-list">
@@ -350,6 +356,12 @@ function top_html()
                     <a href="send_gift">
                         <i class="main-icon fa-solid fa-gift"></i>
                         <span>手動派獎</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="gift_records">
+                        <i class="main-icon fa-solid fa-clipboard-list"></i>
+                        <span>派獎記錄</span>
                     </a>
                 </li>
                 <? } ?>

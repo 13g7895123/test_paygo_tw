@@ -44,13 +44,15 @@ CREATE TABLE send_gift_logs (
     error_message TEXT COMMENT '錯誤訊息',
     operator_id INT COMMENT '操作者ID',
     operator_name VARCHAR(100) COMMENT '操作者名稱',
+    operator_ip VARCHAR(45) COMMENT '操作者IP位址',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新時間',
-    
+
     INDEX idx_server_id (server_id),
     INDEX idx_game_account (game_account),
     INDEX idx_status (status),
-    INDEX idx_created_at (created_at)
+    INDEX idx_created_at (created_at),
+    INDEX idx_operator_ip (operator_ip)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='派獎操作記錄表';
 
 -- 道具管理資料表
@@ -113,11 +115,19 @@ CREATE TABLE server_items (
 -- LIMIT 50;
 
 -- ALTER TABLE 語句 - 用於升級現有資料庫
--- 新增道具編號欄位和數量欄位到派獎設定表
-ALTER TABLE send_gift_settings 
-ADD COLUMN item_field VARCHAR(100) COMMENT '道具編號欄位名稱',
-ADD COLUMN quantity_field VARCHAR(100) COMMENT '數量欄位名稱';
 
--- 新增道具名稱欄位到派獎設定表
-ALTER TABLE send_gift_settings
-ADD COLUMN item_name_field VARCHAR(100) COMMENT '道具名稱欄位名稱';
+-- 新增operator_ip欄位到派獎記錄表（用於現有資料庫升級）
+-- 執行前請先確認欄位是否已存在，避免重複新增
+ALTER TABLE send_gift_logs
+ADD COLUMN operator_ip VARCHAR(45) COMMENT '操作者IP位址',
+ADD INDEX idx_operator_ip (operator_ip);
+
+-- 注意：以下語句用於舊版本升級，新安裝系統可忽略
+-- 新增道具編號欄位和數量欄位到派獎設定表（已在CREATE TABLE中包含）
+-- ALTER TABLE send_gift_settings
+-- ADD COLUMN item_field VARCHAR(100) COMMENT '道具編號欄位名稱',
+-- ADD COLUMN quantity_field VARCHAR(100) COMMENT '數量欄位名稱';
+
+-- 新增道具名稱欄位到派獎設定表（已在CREATE TABLE中包含）
+-- ALTER TABLE send_gift_settings
+-- ADD COLUMN item_name_field VARCHAR(100) COMMENT '道具名稱欄位名稱';
