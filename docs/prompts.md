@@ -26,3 +26,4 @@
         * verify_key，對應該筆資料的szfupay_key2
         * 其餘沒有用到的空值就好
 2. 幫我針對1寫一個執行前的API，可以確認目前有哪些資料要執行，執行後預期會是怎麼樣的效果，一樣寫入前端頁面中
+3. bank_funds_migration這個頁面的功能有權限設定嗎，他出現Access denied: Only administrators can perform migration operations
