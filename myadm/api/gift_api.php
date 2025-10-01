@@ -148,6 +148,10 @@ try {
             handle_test_game_server_connection($pdo);
             break;
 
+        case 'check_migration_structure':
+            handle_check_migration_structure($pdo);
+            break;
+
         default:
             api_error('Invalid action', 400);
     }
@@ -716,25 +720,40 @@ function handle_send_gift($pdo) {
 }
 
 /**
- * 取得派獎記錄
+ * 取得派獎記錄 - 支援關聯式資料表
  */
 function handle_get_gift_logs($pdo) {
     $server_id = isset($_GET['server_id']) ? $_GET['server_id'] : null;
     $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
     $limit = isset($_GET['limit']) ? max(1, min(100, intval($_GET['limit']))) : 20;
     $offset = ($page - 1) * $limit;
-    
+
     // 構建查詢條件
     $where_conditions = [];
     $params = [];
-    
+
+    // 伺服器篩選
     if (!empty($server_id)) {
         $where_conditions[] = "server_id = :server_id";
         $params[':server_id'] = $server_id;
     }
-    
+
+    // 遊戲帳號篩選
+    $game_account = isset($_GET['game_account']) ? trim($_GET['game_account']) : '';
+    if (!empty($game_account)) {
+        $where_conditions[] = "game_account LIKE :game_account";
+        $params[':game_account'] = '%' . $game_account . '%';
+    }
+
+    // 狀態篩選
+    $status = isset($_GET['status']) ? $_GET['status'] : '';
+    if (!empty($status)) {
+        $where_conditions[] = "status = :status";
+        $params[':status'] = $status;
+    }
+
     $where_sql = empty($where_conditions) ? '' : 'WHERE ' . implode(' AND ', $where_conditions);
-    
+
     // 取得總數
     $count_query = $pdo->prepare("SELECT COUNT(*) FROM send_gift_logs $where_sql");
     foreach ($params as $key => $value) {
@@ -742,11 +761,12 @@ function handle_get_gift_logs($pdo) {
     }
     $count_query->execute();
     $total = $count_query->fetchColumn();
-    
+
     // 取得資料
     $params[':limit'] = $limit;
     $params[':offset'] = $offset;
-    
+
+    // 只查詢確定存在的基本欄位
     $query = $pdo->prepare("
         SELECT id, server_id, server_name, game_account, items, total_items,
                status, error_message, operator_name, operator_ip, created_at, updated_at
@@ -755,20 +775,54 @@ function handle_get_gift_logs($pdo) {
         ORDER BY created_at DESC
         LIMIT :limit OFFSET :offset
     ");
-    
+
     foreach ($params as $key => $value) {
         $type = in_array($key, [':limit', ':offset']) ? PDO::PARAM_INT : PDO::PARAM_STR;
         $query->bindValue($key, $value, $type);
     }
-    
+
     $query->execute();
     $logs = $query->fetchAll(PDO::FETCH_ASSOC);
-    
-    // 解析 items JSON
+
+    // 對每筆記錄取得道具明細
     foreach ($logs as &$log) {
-        $log['items'] = json_decode($log['items'], true);
+        // 先嘗試從新表 send_gift_log_items 查詢道具明細
+        try {
+            $items_query = $pdo->prepare("
+                SELECT item_code, item_name, quantity, sort_order
+                FROM send_gift_log_items
+                WHERE log_id = :log_id
+                ORDER BY sort_order ASC, id ASC
+            ");
+            $items_query->execute([':log_id' => $log['id']]);
+            $items_data = $items_query->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($items_data)) {
+                // 從新表獲取資料，轉換為前端期望的格式
+                $log['items'] = array_map(function($item) {
+                    return [
+                        'itemCode' => $item['item_code'],
+                        'itemName' => $item['item_name'],
+                        'quantity' => intval($item['quantity'])
+                    ];
+                }, $items_data);
+            } else {
+                // 新表沒有資料，嘗試解析原始JSON
+                $legacy_items = json_decode($log['items'], true);
+                $log['items'] = is_array($legacy_items) ? $legacy_items : [];
+            }
+        } catch (Exception $e) {
+            // 新表查詢失敗，回退到解析原始JSON
+            try {
+                $legacy_items = json_decode($log['items'], true);
+                $log['items'] = is_array($legacy_items) ? $legacy_items : [];
+            } catch (Exception $json_e) {
+                // JSON解析也失敗，設為空陣列
+                $log['items'] = [];
+            }
+        }
     }
-    
+
     api_success([
         'logs' => $logs,
         'pagination' => [
@@ -781,110 +835,177 @@ function handle_get_gift_logs($pdo) {
 }
 
 /**
- * 取得派獎記錄詳情
+ * 取得派獎記錄詳情 - 支援關聯式資料表
  */
 function handle_get_gift_log_detail($pdo) {
     $log_id = isset($_GET['log_id']) ? $_GET['log_id'] : (isset($_POST['log_id']) ? $_POST['log_id'] : '');
-    
+
     if (empty($log_id)) {
         api_error('Log ID is required');
     }
-    
+
     $query = $pdo->prepare("
-        SELECT sgl.*, s.names as server_full_name 
-        FROM send_gift_logs sgl 
-        LEFT JOIN servers s ON sgl.server_id = s.auton 
+        SELECT sgl.*, s.names as server_full_name
+        FROM send_gift_logs sgl
+        LEFT JOIN servers s ON sgl.server_id = s.auton
         WHERE sgl.id = :log_id
     ");
     $query->bindValue(':log_id', $log_id, PDO::PARAM_INT);
     $query->execute();
     $log = $query->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$log) {
         api_error('Gift log not found', 404);
     }
-    
-    // 解析 items JSON
-    $log['items'] = json_decode($log['items'], true);
-    
+
+    // 嘗試從新表 send_gift_log_items 查詢道具明細
+    try {
+        $items_query = $pdo->prepare("
+            SELECT item_code, item_name, quantity, sort_order
+            FROM send_gift_log_items
+            WHERE log_id = :log_id
+            ORDER BY sort_order ASC, id ASC
+        ");
+        $items_query->execute([':log_id' => $log_id]);
+        $items_data = $items_query->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($items_data)) {
+            // 從新表獲取資料，轉換為前端期望的格式
+            $log['items'] = array_map(function($item) {
+                return [
+                    'itemCode' => $item['item_code'],
+                    'itemName' => $item['item_name'],
+                    'quantity' => intval($item['quantity'])
+                ];
+            }, $items_data);
+        } else {
+            // 新表沒有資料，嘗試解析原始JSON
+            $legacy_items = json_decode($log['items'], true);
+            $log['items'] = is_array($legacy_items) ? $legacy_items : [];
+        }
+    } catch (Exception $e) {
+        // 新表查詢失敗，回退到解析原始JSON
+        try {
+            $legacy_items = json_decode($log['items'], true);
+            $log['items'] = is_array($legacy_items) ? $legacy_items : [];
+        } catch (Exception $json_e) {
+            // JSON解析也失敗，設為空陣列
+            $log['items'] = [];
+        }
+    }
+
     api_success($log, 'Gift log detail retrieved successfully');
 }
 
 /**
- * 取得派獎執行記錄和SQL資訊
+ * 取得派獎執行記錄和SQL資訊 - 支援關聯式資料表
  */
 function handle_get_gift_execution_log($pdo) {
     $log_id = isset($_GET['log_id']) ? $_GET['log_id'] : (isset($_POST['log_id']) ? $_POST['log_id'] : '');
-    
+
     if (empty($log_id)) {
         api_error('Log ID is required');
     }
-    
+
     // 取得派獎記錄詳情
     $query = $pdo->prepare("
         SELECT sgl.*, s.names as server_full_name, s.db_ip, s.db_port, s.db_name, s.db_user, s.db_pid
-        FROM send_gift_logs sgl 
-        LEFT JOIN servers s ON sgl.server_id = s.auton 
+        FROM send_gift_logs sgl
+        LEFT JOIN servers s ON sgl.server_id = s.auton
         WHERE sgl.id = :log_id
     ");
     $query->bindValue(':log_id', $log_id, PDO::PARAM_INT);
     $query->execute();
     $log = $query->fetch(PDO::FETCH_ASSOC);
-    
+
     if (!$log) {
         api_error('Gift log not found', 404);
     }
-    
-    // 解析物品資料
-    $items = json_decode($log['items'], true);
-    
+
+    // 嘗試從新表 send_gift_log_items 查詢道具明細
+    $items = [];
+    try {
+        $items_query = $pdo->prepare("
+            SELECT item_code, item_name, quantity, sort_order
+            FROM send_gift_log_items
+            WHERE log_id = :log_id
+            ORDER BY sort_order ASC, id ASC
+        ");
+        $items_query->execute([':log_id' => $log_id]);
+        $items_data = $items_query->fetchAll(PDO::FETCH_ASSOC);
+
+        if (!empty($items_data)) {
+            // 從新表獲取資料，轉換為前端期望的格式
+            $items = array_map(function($item) {
+                return [
+                    'itemCode' => $item['item_code'],
+                    'itemName' => $item['item_name'],
+                    'quantity' => intval($item['quantity'])
+                ];
+            }, $items_data);
+        } else {
+            // 新表沒有資料，嘗試解析原始JSON
+            $legacy_items = json_decode($log['items'], true);
+            $items = is_array($legacy_items) ? $legacy_items : [];
+        }
+    } catch (Exception $e) {
+        // 新表查詢失敗，回退到解析原始JSON
+        try {
+            $legacy_items = json_decode($log['items'], true);
+            $items = is_array($legacy_items) ? $legacy_items : [];
+        } catch (Exception $json_e) {
+            // JSON解析也失敗，設為空陣列
+            $items = [];
+        }
+    }
+
     // 取得派獎設定資訊
     $settings_query = $pdo->prepare("SELECT * FROM send_gift_settings WHERE server_id = :server_id");
     $settings_query->bindValue(':server_id', $log['server_id'], PDO::PARAM_STR);
     $settings_query->execute();
     $settings = $settings_query->fetch(PDO::FETCH_ASSOC);
-    
+
     // 取得動態欄位
     $fields_query = $pdo->prepare("SELECT * FROM send_gift_fields WHERE server_id = :server_id ORDER BY sort_order");
     $fields_query->bindValue(':server_id', $log['server_id'], PDO::PARAM_STR);
     $fields_query->execute();
     $fields = $fields_query->fetchAll(PDO::FETCH_ASSOC);
-    
+
     // 生成可能的執行SQL
     $execution_sqls = [];
-    
+
     if ($settings && !empty($settings['table_name']) && !empty($settings['account_field'])) {
         $table_name = $settings['table_name'];
         $account_field = $settings['account_field'];
-        $item_field = $settings['item_field'] ?: 'item_id'; // 預設值
-        $quantity_field = $settings['quantity_field'] ?: 'quantity'; // 預設值
+        $item_field = $settings['item_field'] ?: 'item_id';
+        $quantity_field = $settings['quantity_field'] ?: 'quantity';
         $game_account = $log['game_account'];
-        
+
         // 為每個物品生成INSERT SQL
         foreach ($items as $item) {
             $item_code = $item['itemCode'];
             $quantity = $item['quantity'];
-            
-            // 基本SQL模板 - 使用設定的欄位名稱
+
+            // 基本SQL模板
             $base_sql = "INSERT INTO `{$table_name}` (`{$account_field}`, `{$item_field}`, `{$quantity_field}`) VALUES ('{$game_account}', '{$item_code}', {$quantity})";
-            
+
             // 如果有動態欄位，加入到SQL中
             if (!empty($fields)) {
                 $additional_fields = [];
                 $additional_values = [];
-                
+
                 foreach ($fields as $field) {
                     $additional_fields[] = "`{$field['field_name']}`";
                     $additional_values[] = "'{$field['field_value']}'";
                 }
-                
+
                 if (!empty($additional_fields)) {
                     $base_sql = "INSERT INTO `{$table_name}` (`{$account_field}`, `{$item_field}`, `{$quantity_field}`, " .
                                implode(', ', $additional_fields) . ") VALUES ('{$game_account}', '{$item_code}', {$quantity}, " .
                                implode(', ', $additional_values) . ")";
                 }
             }
-            
+
             $execution_sqls[] = [
                 'item' => $item,
                 'sql' => $base_sql,
@@ -892,7 +1013,7 @@ function handle_get_gift_execution_log($pdo) {
             ];
         }
     }
-    
+
     // 整理回傳資料
     $result = [
         'log' => [
@@ -926,7 +1047,7 @@ function handle_get_gift_execution_log($pdo) {
             'account_field' => $settings['account_field'] ?? 'Not configured'
         ]
     ];
-    
+
     api_success($result, 'Gift execution log retrieved successfully');
 }
 
@@ -1557,6 +1678,109 @@ function generate_test_sqls($pdo, $server_id, $settings, $fields_valid = true, $
             'verification_sqls' => []
         ];
     }
+}
+
+/**
+ * 檢查遷移後的資料庫結構
+ */
+function handle_check_migration_structure($pdo) {
+    $structure_info = [
+        'tables' => [],
+        'columns' => [],
+        'migration_status' => null,
+        'recommendations' => []
+    ];
+
+    // 檢查資料表
+    try {
+        // 檢查主表
+        $main_table = $pdo->query("SHOW TABLES LIKE 'send_gift_logs'")->fetch();
+        $structure_info['tables']['send_gift_logs'] = !empty($main_table);
+
+        // 檢查新表
+        $new_table = $pdo->query("SHOW TABLES LIKE 'send_gift_log_items'")->fetch();
+        $structure_info['tables']['send_gift_log_items'] = !empty($new_table);
+
+        // 檢查遷移狀態表
+        $status_table = $pdo->query("SHOW TABLES LIKE 'migration_status'")->fetch();
+        $structure_info['tables']['migration_status'] = !empty($status_table);
+    } catch (Exception $e) {
+        $structure_info['tables']['error'] = $e->getMessage();
+    }
+
+    // 檢查欄位
+    if ($structure_info['tables']['send_gift_logs']) {
+        try {
+            $columns_query = $pdo->query("SHOW COLUMNS FROM send_gift_logs");
+            $columns = $columns_query->fetchAll(PDO::FETCH_ASSOC);
+
+            $column_names = array_column($columns, 'Field');
+            $structure_info['columns']['all_columns'] = $column_names;
+            $structure_info['columns']['items'] = in_array('items', $column_names);
+            $structure_info['columns']['items_backup'] = in_array('items_backup', $column_names);
+            $structure_info['columns']['items_summary'] = in_array('items_summary', $column_names);
+        } catch (Exception $e) {
+            $structure_info['columns']['error'] = $e->getMessage();
+        }
+    }
+
+    // 檢查遷移狀態
+    if ($structure_info['tables']['migration_status']) {
+        try {
+            $status_query = $pdo->prepare("
+                SELECT * FROM migration_status
+                WHERE migration_name = 'json_to_relational_gift_logs'
+            ");
+            $status_query->execute();
+            $structure_info['migration_status'] = $status_query->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            $structure_info['migration_status'] = ['error' => $e->getMessage()];
+        }
+    }
+
+    // 檢查資料情況
+    if ($structure_info['tables']['send_gift_logs']) {
+        try {
+            // 檢查有多少記錄有JSON資料
+            $json_count_query = $pdo->query("
+                SELECT
+                    COUNT(*) as total_logs,
+                    COUNT(CASE WHEN items IS NOT NULL AND items != '' THEN 1 END) as has_items_json
+                FROM send_gift_logs
+            ");
+            $counts = $json_count_query->fetch(PDO::FETCH_ASSOC);
+            $structure_info['data_stats'] = $counts;
+        } catch (Exception $e) {
+            $structure_info['data_stats'] = ['error' => $e->getMessage()];
+        }
+    }
+
+    if ($structure_info['tables']['send_gift_log_items']) {
+        try {
+            $items_count_query = $pdo->query("SELECT COUNT(*) as migrated_items FROM send_gift_log_items");
+            $items_count = $items_count_query->fetch(PDO::FETCH_ASSOC);
+            $structure_info['data_stats']['migrated_items'] = $items_count['migrated_items'];
+        } catch (Exception $e) {
+            $structure_info['data_stats']['migrated_items_error'] = $e->getMessage();
+        }
+    }
+
+    // 提供建議
+    if (!$structure_info['tables']['send_gift_log_items']) {
+        $structure_info['recommendations'][] = '建議執行遷移建立 send_gift_log_items 表';
+    }
+
+    if (!$structure_info['columns']['items_backup'] || !$structure_info['columns']['items_summary']) {
+        $structure_info['recommendations'][] = 'items_backup 或 items_summary 欄位創建失敗，但API已調整為不依賴這些欄位';
+    }
+
+    if (isset($structure_info['data_stats']['has_items_json']) &&
+        $structure_info['data_stats']['has_items_json'] > 0 &&
+        (!isset($structure_info['data_stats']['migrated_items']) || $structure_info['data_stats']['migrated_items'] == 0)) {
+        $structure_info['recommendations'][] = '檢測到未遷移的JSON資料，建議執行資料遷移';
+    }
+
+    api_success($structure_info, 'Database migration structure checked');
 }
 
 ?>

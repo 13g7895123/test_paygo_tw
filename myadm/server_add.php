@@ -156,16 +156,6 @@ function save_gift_settings($pdo, $server_id) {
     $field_names = isset($_REQUEST["field_names"]) ? $_REQUEST["field_names"] : array();
     $field_values = isset($_REQUEST["field_values"]) ? $_REQUEST["field_values"] : array();
     
-    // 調試日誌
-    error_log("save_gift_settings called with server_id: " . $server_id);
-    error_log("table_name: " . $table_name);
-    error_log("account_field: " . $account_field);
-    error_log("item_field: " . $item_field);
-    error_log("item_name_field: " . $item_name_field);
-    error_log("quantity_field: " . $quantity_field);
-    error_log("field_names: " . json_encode($field_names));
-    error_log("field_values: " . json_encode($field_values));
-    
     // 如果有基本設定資料，處理派獎設定主表
     if(!empty($table_name) || !empty($account_field) || !empty($item_field) || !empty($item_name_field) || !empty($quantity_field)) {
         // 先檢查是否已存在
@@ -175,7 +165,6 @@ function save_gift_settings($pdo, $server_id) {
         
         if($existing = $check_query->fetch()) {
             // 更新現有記錄
-            error_log("Updating existing gift settings ID: " . $existing['id']);
             $update_query = $pdo->prepare("
                 UPDATE send_gift_settings SET 
                     table_name = :table_name,
@@ -194,7 +183,6 @@ function save_gift_settings($pdo, $server_id) {
             $update_query->execute();
         } else {
             // 插入新記錄
-            error_log("Inserting new gift settings");
             $insert_query = $pdo->prepare("
                 INSERT INTO send_gift_settings (server_id, table_name, account_field, item_field, item_name_field, quantity_field) 
                 VALUES (:server_id, :table_name, :account_field, :item_field, :item_name_field, :quantity_field)
@@ -222,7 +210,6 @@ function save_gift_settings($pdo, $server_id) {
             
             // 只保存有內容的欄位
             if(!empty($field_name) && !empty($field_value)) {
-                error_log("Inserting dynamic field: " . $field_name . " = " . $field_value);
                 $insert_field_query = $pdo->prepare("
                     INSERT INTO send_gift_fields (server_id, field_name, field_value, sort_order) 
                     VALUES (:server_id, :field_name, :field_value, :sort_order)

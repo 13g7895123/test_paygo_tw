@@ -61,19 +61,18 @@ top_html();
                             <table class="table table-hover records-table" id="recordsTable">
                                 <thead>
                                     <tr>
-                                        <th width="8%">記錄ID</th>
-                                        <th width="12%">伺服器</th>
-                                        <th width="15%">遊戲帳號</th>
-                                        <th width="20%">道具資訊</th>
-                                        <th width="8%">狀態</th>
-                                        <th width="12%">派發者</th>
-                                        <th width="12%">操作IP</th>
-                                        <th width="13%">派發時間</th>
+                                        <th width="14%">伺服器</th>
+                                        <th width="16%">遊戲帳號</th>
+                                        <th width="22%">道具資訊</th>
+                                        <th width="10%">狀態</th>
+                                        <th width="13%">派發者</th>
+                                        <th width="13%">操作IP</th>
+                                        <th width="12%">派發時間</th>
                                     </tr>
                                 </thead>
                                 <tbody id="recordsTableBody">
                                     <tr>
-                                        <td colspan="8" class="text-center">
+                                        <td colspan="7" class="text-center">
                                             <div class="loading-spinner">
                                                 <i class="fa fa-spinner fa-spin fa-2x"></i>
                                                 <p>載入派獎記錄中...</p>
@@ -498,7 +497,7 @@ function showRecordsLoading() {
     const tableBody = $('#recordsTableBody');
     tableBody.html(`
         <tr>
-            <td colspan="8" class="text-center">
+            <td colspan="7" class="text-center">
                 <div class="loading-spinner">
                     <i class="fa fa-spinner fa-spin fa-2x"></i>
                     <p>載入派獎記錄中...</p>
@@ -516,7 +515,7 @@ function showRecordsError(message) {
     const tableBody = $('#recordsTableBody');
     tableBody.html(`
         <tr>
-            <td colspan="8" class="text-center error-message">
+            <td colspan="7" class="text-center error-message">
                 <i class="fa fa-exclamation-triangle"></i>
                 <h4>載入失敗</h4>
                 <p>${message}</p>
@@ -542,7 +541,7 @@ function displayGiftRecords(data) {
     if (!logs || logs.length === 0) {
         tableBody.html(`
             <tr>
-                <td colspan="8" class="text-center no-data">
+                <td colspan="7" class="text-center no-data">
                     <i class="fa fa-inbox fa-3x text-muted"></i>
                     <p class="text-muted">目前沒有派獎記錄</p>
                 </td>
@@ -606,7 +605,6 @@ function generateRecordRow(log) {
 
     return `
         <tr>
-            <td class="text-center">${log.id}</td>
             <td class="text-center">${log.server_name || '-'}</td>
             <td class="text-center">${log.game_account || '-'}</td>
             <td>
