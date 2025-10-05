@@ -249,10 +249,10 @@ function save_bank_funds($pdo, $server_id) {
     switch($pay_bank) {
         case 'ecpay':
             // 綠界金流
-            $merchant_id = _r("MerchantID_bank");
-            $hashkey = _r("HashKey_bank");
-            $hashiv = _r("HashIV_bank");
-            
+            $merchant_id = _r("ecpay_merchant_id_bank");
+            $hashkey = _r("ecpay_hashkey_bank");
+            $hashiv = _r("ecpay_hashiv_bank");
+
             if(!empty($merchant_id)) {
                 $bank_funds_data[] = [
                     'server_code' => $server_id,
@@ -264,13 +264,13 @@ function save_bank_funds($pdo, $server_id) {
                 ];
             }
             break;
-            
-        case 'ebpay':  
+
+        case 'ebpay':
             // 藍新金流
-            $merchant_id = _r("MerchantID_bank");
-            $hashkey = _r("HashKey_bank");
-            $hashiv = _r("HashIV_bank");
-            
+            $merchant_id = _r("ebpay_merchant_id_bank");
+            $hashkey = _r("ebpay_hashkey_bank");
+            $hashiv = _r("ebpay_hashiv_bank");
+
             if(!empty($merchant_id)) {
                 $bank_funds_data[] = [
                     'server_code' => $server_id,
@@ -282,13 +282,13 @@ function save_bank_funds($pdo, $server_id) {
                 ];
             }
             break;
-            
+
         case 'funpoint':
             // 歐買尬金流
-            $merchant_id = _r("MerchantID_bank");
-            $hashkey = _r("HashKey_bank");
-            $hashiv = _r("HashIV_bank");
-            
+            $merchant_id = _r("funpoint_merchant_id_bank");
+            $hashkey = _r("funpoint_hashkey_bank");
+            $hashiv = _r("funpoint_hashiv_bank");
+
             if(!empty($merchant_id)) {
                 $bank_funds_data[] = [
                     'server_code' => $server_id,
@@ -350,9 +350,9 @@ function save_bank_funds($pdo, $server_id) {
             break;
             
         case 'ant':
-            $username = _r("username_bank");
-            $hashkey = _r("HashKey_bank");
-            $hashiv = _r("HashIV_bank");
+            $username = _r("ant_username_bank");
+            $hashkey = _r("ant_hashkey_bank");
+            $hashiv = _r("ant_hashiv_bank");
 
             if(!empty($username)) {
                 $bank_funds_data[] = [
@@ -745,43 +745,51 @@ if(!empty($an = _r("an"))) {
     // 設定預設的金流服務選擇
     // $datalist['pay_bank'] = $first_payment_type;
     
-    // 如果有找到第一個金流服務，載入其資料到表單欄位
-    if(!empty($first_payment_type) && isset($bank_funds_js[$first_payment_type])) {
-        $first_fund = $bank_funds_js[$first_payment_type];
-        
-        switch($first_payment_type) {
+    // 載入所有金流服務的資料到表單欄位（每個金流都有獨立的欄位）
+    foreach($bank_funds_js as $payment_type => $fund_data) {
+        switch($payment_type) {
             case 'ecpay':
+                $datalist['ecpay_merchant_id_bank'] = $fund_data['merchant_id'];
+                $datalist['ecpay_hashkey_bank'] = $fund_data['hashkey'];
+                $datalist['ecpay_hashiv_bank'] = $fund_data['hashiv'];
+                break;
+
             case 'ebpay':
+                $datalist['ebpay_merchant_id_bank'] = $fund_data['merchant_id'];
+                $datalist['ebpay_hashkey_bank'] = $fund_data['hashkey'];
+                $datalist['ebpay_hashiv_bank'] = $fund_data['hashiv'];
+                break;
+
             case 'funpoint':
-                $datalist['MerchantID_bank'] = $first_fund['merchant_id'];
-                $datalist['HashKey_bank'] = $first_fund['hashkey'];
-                $datalist['HashIV_bank'] = $first_fund['hashiv'];
+                $datalist['funpoint_merchant_id_bank'] = $fund_data['merchant_id'];
+                $datalist['funpoint_hashkey_bank'] = $fund_data['hashkey'];
+                $datalist['funpoint_hashiv_bank'] = $fund_data['hashiv'];
                 break;
-                
+
             case 'gomypay':
-                $datalist['gomypay_shop_id_bank'] = $first_fund['merchant_id'];
-                $datalist['gomypay_key_bank'] = $first_fund['verify_key'];
+                $datalist['gomypay_shop_id_bank'] = $fund_data['merchant_id'];
+                $datalist['gomypay_key_bank'] = $fund_data['verify_key'];
                 break;
-                
+
             case 'smilepay':
-                $datalist['smilepay_shop_id_bank'] = $first_fund['merchant_id'];
-                $datalist['smilepay_key_bank'] = $first_fund['verify_key'];
+                $datalist['smilepay_shop_id_bank'] = $fund_data['merchant_id'];
+                $datalist['smilepay_key_bank'] = $fund_data['verify_key'];
                 break;
-                
+
             case 'szfu':
-                $datalist['szfupay_shop_id_bank'] = $first_fund['merchant_id'];
-                $datalist['szfupay_key_bank'] = $first_fund['verify_key'];
+                $datalist['szfupay_shop_id_bank'] = $fund_data['merchant_id'];
+                $datalist['szfupay_key_bank'] = $fund_data['verify_key'];
                 break;
-                
+
             case 'ant':
-                $datalist['username_bank'] = $first_fund['username'] ?? $first_fund['merchant_id'];
-                $datalist['HashKey_bank'] = $first_fund['hashkey'];
-                $datalist['HashIV_bank'] = $first_fund['hashiv'];
+                $datalist['ant_username_bank'] = $fund_data['username'] ?? $fund_data['merchant_id'];
+                $datalist['ant_hashkey_bank'] = $fund_data['hashkey'];
+                $datalist['ant_hashiv_bank'] = $fund_data['hashiv'];
                 break;
-                
+
             case 'pchome':
-                $datalist['pchome_app_id_bank'] = $first_fund['merchant_id'];
-                $datalist['pchome_secret_code_bank'] = $first_fund['verify_key'];
+                $datalist['pchome_app_id_bank'] = $fund_data['merchant_id'];
+                $datalist['pchome_secret_code_bank'] = $fund_data['verify_key'];
                 break;
         }
     }
@@ -1024,13 +1032,33 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 
 </td></tr>
 
-<tr><td class="normaldiv_bank">
+<tr><td class="ecpaydiv_bank">
 
-特店編號：<input name="MerchantID_bank" id="MerchantID_bank" type="text" value="<?=$datalist['MerchantID_bank']?>">&nbsp;&nbsp;
+特店編號：<input name="ecpay_merchant_id_bank" id="ecpay_merchant_id_bank" type="text" value="<?=$datalist['ecpay_merchant_id_bank']?>">&nbsp;&nbsp;
 
-介接 HashKey：<input name="HashKey_bank" id="HashKey_bank" type="text" value="<?=$datalist['HashKey_bank']?>">&nbsp;&nbsp;
+介接 HashKey：<input name="ecpay_hashkey_bank" id="ecpay_hashkey_bank" type="text" value="<?=$datalist['ecpay_hashkey_bank']?>">&nbsp;&nbsp;
 
-介接 HashIV：<input name="HashIV_bank" id="HashIV_bank" type="text" value="<?=$datalist['HashIV_bank']?>">&nbsp;&nbsp;
+介接 HashIV：<input name="ecpay_hashiv_bank" id="ecpay_hashiv_bank" type="text" value="<?=$datalist['ecpay_hashiv_bank']?>">&nbsp;&nbsp;
+
+</td></tr>
+
+<tr><td class="ebpaydiv_bank">
+
+特店編號：<input name="ebpay_merchant_id_bank" id="ebpay_merchant_id_bank" type="text" value="<?=$datalist['ebpay_merchant_id_bank']?>">&nbsp;&nbsp;
+
+介接 HashKey：<input name="ebpay_hashkey_bank" id="ebpay_hashkey_bank" type="text" value="<?=$datalist['ebpay_hashkey_bank']?>">&nbsp;&nbsp;
+
+介接 HashIV：<input name="ebpay_hashiv_bank" id="ebpay_hashiv_bank" type="text" value="<?=$datalist['ebpay_hashiv_bank']?>">&nbsp;&nbsp;
+
+</td></tr>
+
+<tr><td class="funpointdiv_bank">
+
+特店編號：<input name="funpoint_merchant_id_bank" id="funpoint_merchant_id_bank" type="text" value="<?=$datalist['funpoint_merchant_id_bank']?>">&nbsp;&nbsp;
+
+介接 HashKey：<input name="funpoint_hashkey_bank" id="funpoint_hashkey_bank" type="text" value="<?=$datalist['funpoint_hashkey_bank']?>">&nbsp;&nbsp;
+
+介接 HashIV：<input name="funpoint_hashiv_bank" id="funpoint_hashiv_bank" type="text" value="<?=$datalist['funpoint_hashiv_bank']?>">&nbsp;&nbsp;
 
 </td></tr>
 
@@ -1068,11 +1096,11 @@ echo '<div class="col-md-5 col-xs-12 margin-bottom-10">自訂底圖：
 
 <tr><td class="antdiv_bank">
 
-使用者名稱：<input name="username_bank" id="username_bank" type="text" value="<?=$datalist['username_bank']?>">&nbsp;&nbsp;
+使用者名稱：<input name="ant_username_bank" id="ant_username_bank" type="text" value="<?=$datalist['ant_username_bank']?>">&nbsp;&nbsp;
 
-介接 HashKey：<input name="HashKey_bank" id="ant_HashKey_bank" type="text" value="<?=$datalist['HashKey_bank']?>">&nbsp;&nbsp;
+介接 HashKey：<input name="ant_hashkey_bank" id="ant_hashkey_bank" type="text" value="<?=$datalist['ant_hashkey_bank']?>">&nbsp;&nbsp;
 
-介接 HashIV：<input name="HashIV_bank" id="ant_HashIV_bank" type="text" value="<?=$datalist['HashIV_bank']?>">&nbsp;&nbsp;
+介接 HashIV：<input name="ant_hashiv_bank" id="ant_hashiv_bank" type="text" value="<?=$datalist['ant_hashiv_bank']?>">&nbsp;&nbsp;
 
 </td></tr>
 
@@ -1649,64 +1677,73 @@ function pay_check2() {
 function pay_check_bank() {
 
   v = $("input[name=pay_bank]:checked").val();
-  
+
   console.log('pay_check_bank() called with value:', v);
 
   // 清空所有欄位
   clearBankFields();
 
-  $(".normaldiv_bank").hide();
-
+  $(".ecpaydiv_bank").hide();
+  $(".ebpaydiv_bank").hide();
+  $(".funpointdiv_bank").hide();
   $(".gomypaydiv_bank").hide();
-
   $(".pchomediv_bank").hide();
-
   $(".smilepaydiv_bank").hide();
-  
   $(".szfupaydiv_bank").hide();
-  
   $(".antdiv_bank").hide();
-  
+
   // 載入對應金流服務的資料
   if (v && v !== 'no' && bankFundsData[v]) {
       var fundData = bankFundsData[v];
       console.log('Loading fund data for', v, ':', fundData);
-      
+
       switch(v) {
           case "ecpay":
-          case "ebpay":
-          case "funpoint":
-              $("#MerchantID_bank").val(fundData.merchant_id || '');
-              $("#HashKey_bank").val(fundData.hashkey || '');
-              $("#HashIV_bank").val(fundData.hashiv || '');
-              $(".normaldiv_bank").show();
+              $("#ecpay_merchant_id_bank").val(fundData.merchant_id || '');
+              $("#ecpay_hashkey_bank").val(fundData.hashkey || '');
+              $("#ecpay_hashiv_bank").val(fundData.hashiv || '');
+              $(".ecpaydiv_bank").show();
               break;
-              
+
+          case "ebpay":
+              $("#ebpay_merchant_id_bank").val(fundData.merchant_id || '');
+              $("#ebpay_hashkey_bank").val(fundData.hashkey || '');
+              $("#ebpay_hashiv_bank").val(fundData.hashiv || '');
+              $(".ebpaydiv_bank").show();
+              break;
+
+          case "funpoint":
+              $("#funpoint_merchant_id_bank").val(fundData.merchant_id || '');
+              $("#funpoint_hashkey_bank").val(fundData.hashkey || '');
+              $("#funpoint_hashiv_bank").val(fundData.hashiv || '');
+              $(".funpointdiv_bank").show();
+              break;
+
           case "gomypay":
               $("#gomypay_shop_id_bank").val(fundData.merchant_id || '');
               $("#gomypay_key_bank").val(fundData.verify_key || '');
               $(".gomypaydiv_bank").show();
               break;
-              
+
           case "smilepay":
               $("#smilepay_shop_id_bank").val(fundData.merchant_id || '');
               $("#smilepay_key_bank").val(fundData.verify_key || '');
               $(".smilepaydiv_bank").show();
               break;
-              
+
           case "szfu":
               $("#szfupay_shop_id_bank").val(fundData.merchant_id || '');
               $("#szfupay_key_bank").val(fundData.verify_key || '');
               $(".szfupaydiv_bank").show();
               break;
-              
+
           case "ant":
-              $("#username_bank").val(fundData.username || fundData.merchant_id || '');
-              $("#ant_HashKey_bank").val(fundData.hashkey || '');
-              $("#ant_HashIV_bank").val(fundData.hashiv || '');
+              $("#ant_username_bank").val(fundData.username || fundData.merchant_id || '');
+              $("#ant_hashkey_bank").val(fundData.hashkey || '');
+              $("#ant_hashiv_bank").val(fundData.hashiv || '');
               $(".antdiv_bank").show();
               break;
-              
+
           case "pchome":
               $("#pchome_app_id_bank").val(fundData.merchant_id || '');
               $("#pchome_secret_code_bank").val(fundData.verify_key || '');
@@ -1716,6 +1753,18 @@ function pay_check_bank() {
   } else {
       // 顯示預設的欄位區域，但不載入資料
       switch(v) {
+          case "ecpay":
+              $(".ecpaydiv_bank").show();
+              break;
+
+          case "ebpay":
+              $(".ebpaydiv_bank").show();
+              break;
+
+          case "funpoint":
+              $(".funpointdiv_bank").show();
+              break;
+
           case "pchome":
               $(".pchomediv_bank").show();
               break;
@@ -1727,21 +1776,17 @@ function pay_check_bank() {
           case "smilepay":
               $(".smilepaydiv_bank").show();
               break;
-              
+
           case "szfu":
               $(".szfupaydiv_bank").show();
               break;
-              
+
           case "ant":
               $(".antdiv_bank").show();
               break;
-              
+
           case "no":
               // 無需顯示任何額外欄位
-              break;
-
-          default:
-              $(".normaldiv_bank").show();	  
               break;
       }
   }
@@ -1749,12 +1794,18 @@ function pay_check_bank() {
 
 function clearBankFields() {
     // 清空所有銀行金流相關的輸入欄位
-    $("#MerchantID_bank").val('');
-    $("#username_bank").val('');
-    $("#HashKey_bank").val('');
-    $("#HashIV_bank").val('');
-    $("#ant_HashKey_bank").val('');
-    $("#ant_HashIV_bank").val('');
+    $("#ecpay_merchant_id_bank").val('');
+    $("#ecpay_hashkey_bank").val('');
+    $("#ecpay_hashiv_bank").val('');
+    $("#ebpay_merchant_id_bank").val('');
+    $("#ebpay_hashkey_bank").val('');
+    $("#ebpay_hashiv_bank").val('');
+    $("#funpoint_merchant_id_bank").val('');
+    $("#funpoint_hashkey_bank").val('');
+    $("#funpoint_hashiv_bank").val('');
+    $("#ant_username_bank").val('');
+    $("#ant_hashkey_bank").val('');
+    $("#ant_hashiv_bank").val('');
     $("#gomypay_shop_id_bank").val('');
     $("#gomypay_key_bank").val('');
     $("#smilepay_shop_id_bank").val('');
