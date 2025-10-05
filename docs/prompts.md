@@ -27,3 +27,5 @@
         * 其餘沒有用到的空值就好
 2. 幫我針對1寫一個執行前的API，可以確認目前有哪些資料要執行，執行後預期會是怎麼樣的效果，一樣寫入前端頁面中
 3. bank_funds_migration這個頁面的功能有權限設定嗎，他出現Access denied: Only administrators can perform migration operations
+4. 幫我寫一支API，存取bank_funds這個資料表的server_code欄位，拿來搜尋servers這張表的id，取到他的auton，再把這筆資料更新進bank_funds這個資料表的server_code欄位，內文太多的話可以在docs底下開一個資料夾分段執行，妳是不是存取錯誤的專案了，請確認存取的專案是正確的
+5. 幫我針對第四點的API寫一個頁面，讓我可以確認要執行的行動無誤後，再執行
