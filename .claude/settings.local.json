@@ -19,7 +19,8 @@
       "mcp__playwright__browser_select_option",
       "Read(//d/Bonus/**)",
       "Bash(mysql:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Read(//usr/**)"
     ],
     "deny": [],
     "ask": []

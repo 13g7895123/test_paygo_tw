@@ -29,3 +29,4 @@
 3. bank_funds_migration這個頁面的功能有權限設定嗎，他出現Access denied: Only administrators can perform migration operations
 4. 幫我寫一支API，存取bank_funds這個資料表的server_code欄位，拿來搜尋servers這張表的id，取到他的auton，再把這筆資料更新進bank_funds這個資料表的server_code欄位，內文太多的話可以在docs底下開一個資料夾分段執行，妳是不是存取錯誤的專案了，請確認存取的專案是正確的
 5. 幫我針對第四點的API寫一個頁面，讓我可以確認要執行的行動無誤後，再執行
+6. server_add.php調整一下這一頁的"銀行轉帳金流服務"這個項目選完後，下方會填入金流資料，目前會有相同的欄位資料，送出會同步送出，導致後面的資料覆蓋到前面的資料，幫我調整一下，送出的時候，不要有同樣的欄位，或是多一個金流服務的參數作為判斷，讓送出後的資料，不同金流間不會互相影響
