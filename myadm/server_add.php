@@ -224,11 +224,44 @@ function save_gift_settings($pdo, $server_id) {
     }
 }
 
+/**
+ * 記錄 SQL 語句到 API
+ */
+function log_sql_to_api($operation, $sql, $parameters, $server_id, $result = '') {
+    $log_data = [
+        'operation' => $operation,
+        'sql' => $sql,
+        'parameters' => $parameters,
+        'server_id' => $server_id,
+        'result' => $result
+    ];
+
+    // 記錄到 error_log
+    error_log("SQL_LOG [{$operation}]: " . json_encode($log_data, JSON_UNESCAPED_UNICODE));
+
+    // 發送到 API（非阻塞方式）
+    try {
+        $api_url = 'http://localhost/myadm/api/bank_funds_sql_logger_api.php?action=log';
+        $options = [
+            'http' => [
+                'header' => "Content-type: application/json\r\n",
+                'method' => 'POST',
+                'content' => json_encode($log_data),
+                'timeout' => 1 // 1 秒超時，避免阻塞
+            ]
+        ];
+        $context = stream_context_create($options);
+        @file_get_contents($api_url, false, $context);
+    } catch (Exception $e) {
+        error_log("Failed to log SQL to API: " . $e->getMessage());
+    }
+}
+
 function save_bank_funds($pdo, $server_id) {
     // 獲取銀行轉帳金流設定
     $pay_bank = _r("pay_bank");
     $gstats_bank = _r("gstats_bank");
-    
+
     // 調試日誌
     error_log("save_bank_funds called with pay_bank: " . $pay_bank . ", server_id: " . $server_id);
     
@@ -389,26 +422,38 @@ function save_bank_funds($pdo, $server_id) {
         error_log("Processing bank fund data: " . json_encode($data));
         
         // 先檢查是否已存在
-        $check_query = $pdo->prepare("
-            SELECT id FROM bank_funds 
-            WHERE server_code = :server_code AND third_party_payment = :third_party_payment
-        ");
+        $check_sql = "SELECT id FROM bank_funds WHERE server_code = :server_code AND third_party_payment = :third_party_payment";
+        $check_params = [
+            'server_code' => $data['server_code'],
+            'third_party_payment' => $data['third_party_payment']
+        ];
+
+        // 記錄 CHECK SQL
+        log_sql_to_api('CHECK', $check_sql, $check_params, $server_id);
+
+        $check_query = $pdo->prepare($check_sql);
         $check_query->bindValue(':server_code', $data['server_code'], PDO::PARAM_STR);
         $check_query->bindValue(':third_party_payment', $data['third_party_payment'], PDO::PARAM_STR);
         $check_query->execute();
-        
+
         if($existing = $check_query->fetch()) {
             // 更新現有記錄
             error_log("Updating existing record ID: " . $existing['id']);
-            $update_query = $pdo->prepare("
-                UPDATE bank_funds SET
-                    merchant_id = :merchant_id,
-                    username = :username,
-                    hashkey = :hashkey,
-                    hashiv = :hashiv,
-                    verify_key = :verify_key
-                WHERE id = :id
-            ");
+
+            $update_sql = "UPDATE bank_funds SET merchant_id = :merchant_id, username = :username, hashkey = :hashkey, hashiv = :hashiv, verify_key = :verify_key WHERE id = :id";
+            $update_params = [
+                'id' => $existing['id'],
+                'merchant_id' => $data['merchant_id'],
+                'username' => $data['username'] ?? null,
+                'hashkey' => $data['hashkey'],
+                'hashiv' => $data['hashiv'],
+                'verify_key' => $data['verify_key']
+            ];
+
+            // 記錄 UPDATE SQL
+            log_sql_to_api('UPDATE', $update_sql, $update_params, $server_id, 'Updating record ID: ' . $existing['id']);
+
+            $update_query = $pdo->prepare($update_sql);
             $update_query->bindValue(':id', $existing['id'], PDO::PARAM_INT);
             $update_query->bindValue(':merchant_id', $data['merchant_id'], PDO::PARAM_STR);
             $update_query->bindValue(':username', $data['username'] ?? null, PDO::PARAM_STR);
@@ -419,10 +464,22 @@ function save_bank_funds($pdo, $server_id) {
         } else {
             // 插入新記錄
             error_log("Inserting new record");
-            $insert_query = $pdo->prepare("
-                INSERT INTO bank_funds (server_code, third_party_payment, merchant_id, username, hashkey, hashiv, verify_key)
-                VALUES (:server_code, :third_party_payment, :merchant_id, :username, :hashkey, :hashiv, :verify_key)
-            ");
+
+            $insert_sql = "INSERT INTO bank_funds (server_code, third_party_payment, merchant_id, username, hashkey, hashiv, verify_key) VALUES (:server_code, :third_party_payment, :merchant_id, :username, :hashkey, :hashiv, :verify_key)";
+            $insert_params = [
+                'server_code' => $data['server_code'],
+                'third_party_payment' => $data['third_party_payment'],
+                'merchant_id' => $data['merchant_id'],
+                'username' => $data['username'] ?? null,
+                'hashkey' => $data['hashkey'],
+                'hashiv' => $data['hashiv'],
+                'verify_key' => $data['verify_key']
+            ];
+
+            // 記錄 INSERT SQL
+            log_sql_to_api('INSERT', $insert_sql, $insert_params, $server_id, 'Inserting new record');
+
+            $insert_query = $pdo->prepare($insert_sql);
             $insert_query->bindValue(':server_code', $data['server_code'], PDO::PARAM_STR);
             $insert_query->bindValue(':third_party_payment', $data['third_party_payment'], PDO::PARAM_STR);
             $insert_query->bindValue(':merchant_id', $data['merchant_id'], PDO::PARAM_STR);
